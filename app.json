@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "BirdApp",
+    "slug": "birdapp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "birdapp",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F5EFE0"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.birdapp.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "BirdApp uses your location to show nearby sightings and identify local species.",
+        "NSLocationAlwaysUsageDescription": "BirdApp uses your location to show nearby sightings.",
+        "NSMicrophoneUsageDescription": "BirdApp uses your microphone to record bird calls for identification.",
+        "NSCameraUsageDescription": "BirdApp uses your camera to photograph birds for logging.",
+        "NSPhotoLibraryUsageDescription": "BirdApp accesses your photo library to attach images to sightings."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F5EFE0"
+      },
+      "package": "com.birdapp.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "RECORD_AUDIO",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE"
+      ],
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-location",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "BirdApp uses your camera to photograph birds."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "BirdApp uses your microphone to record bird calls."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
