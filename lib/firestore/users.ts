@@ -19,6 +19,8 @@ export interface UserProfile {
   username: string;
   displayName: string;
   photoURL: string;
+  birdStyleId?: string;
+  isAdmin?: boolean;
   bio: string;
   totalSightings: number;
   totalSpecies: number;

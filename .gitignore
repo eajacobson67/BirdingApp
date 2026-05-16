@@ -42,3 +42,6 @@ yarn-error.*
 
 # Claude Code
 .claude/
+
+# Seed script cache — large generated file, not needed in source control
+scripts/seed-cache.json

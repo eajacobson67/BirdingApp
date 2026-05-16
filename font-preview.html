@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bird League — Font Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&family=Quicksand:wght@400;600;700&family=Pacifico&family=Caveat:wght@400;700&family=Patrick+Hand&family=Fredoka+One&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #f0ece4;
+      font-family: sans-serif;
+      padding: 40px 24px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 15px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 32px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+    }
+
+    .card .font-label {
+      font-family: sans-serif;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #bbb;
+      margin-bottom: 12px;
+    }
+
+    .bird-emoji {
+      font-size: 72px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .app-name {
+      font-size: 34px;
+      font-weight: 800;
+      color: #A4714A;
+      text-align: center;
+    }
+
+    .tagline {
+      font-size: 11px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: #8D9297;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .btn {
+      background: #E03943;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 13px 0;
+      width: 100%;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: default;
+      margin-top: 4px;
+    }
+
+    .link-text {
+      font-size: 13px;
+      color: #8D9297;
+      margin-top: 8px;
+    }
+
+    .link-text span {
+      color: #A4714A;
+      font-weight: 700;
+    }
+
+    /* ── Per-font overrides ── */
+
+    .nunito       .app-name,
+    .nunito       .tagline,
+    .nunito       .btn,
+    .nunito       .link-text { font-family: 'Nunito', sans-serif; }
+
+    .quicksand    .app-name,
+    .quicksand    .tagline,
+    .quicksand    .btn,
+    .quicksand    .link-text { font-family: 'Quicksand', sans-serif; }
+
+    .pacifico     .app-name,
+    .pacifico     .btn        { font-family: 'Pacifico', cursive; }
+    .pacifico     .tagline,
+    .pacifico     .link-text  { font-family: 'Pacifico', cursive; font-size: 10px; }
+
+    .caveat       .app-name,
+    .caveat       .tagline,
+    .caveat       .btn,
+    .caveat       .link-text { font-family: 'Caveat', cursive; }
+    .caveat       .app-name  { font-size: 38px; }
+    .caveat       .btn       { font-size: 17px; }
+
+    .patrick      .app-name,
+    .patrick      .tagline,
+    .patrick      .btn,
+    .patrick      .link-text { font-family: 'Patrick Hand', cursive; }
+
+    .fredoka      .app-name,
+    .fredoka      .tagline,
+    .fredoka      .btn,
+    .fredoka      .link-text { font-family: 'Fredoka One', cursive; }
+  </style>
+</head>
+<body>
+
+  <h1>Bird League — Font Comparison</h1>
+
+  <div class="grid">
+
+    <!-- Nunito -->
+    <div class="card nunito">
+      <div class="font-label">Nunito</div>
+      <div class="bird-emoji">🐦</div>
+      <div class="app-name">Bird League</div>
+      <div class="tagline">Find · Share · Compete</div>
+      <button class="btn">Sign In</button>
+      <div class="link-text">Don't have an account? <span>Sign up</span></div>
+    </div>
+
+    <!-- Quicksand -->
+    <div class="card quicksand">
+      <div class="font-label">Quicksand</div>
+      <div class="bird-emoji">🐦</div>
+      <div class="app-name">Bird League</div>
+      <div class="tagline">Find · Share · Compete</div>
+      <button class="btn">Sign In</button>
+      <div class="link-text">Don't have an account? <span>Sign up</span></div>
+    </div>
+
+    <!-- Pacifico -->
+    <div class="card pacifico">
+      <div class="font-label">Pacifico</div>
+      <div class="bird-emoji">🐦</div>
+      <div class="app-name">Bird League</div>
+      <div class="tagline">Find · Share · Compete</div>
+      <button class="btn">Sign In</button>
+      <div class="link-text">Don't have an account? <span>Sign up</span></div>
+    </div>
+
+    <!-- Caveat -->
+    <div class="card caveat">
+      <div class="font-label">Caveat</div>
+      <div class="bird-emoji">🐦</div>
+      <div class="app-name">Bird League</div>
+      <div class="tagline">Find · Share · Compete</div>
+      <button class="btn">Sign In</button>
+      <div class="link-text">Don't have an account? <span>Sign up</span></div>
+    </div>
+
+    <!-- Patrick Hand -->
+    <div class="card patrick">
+      <div class="font-label">Patrick Hand</div>
+      <div class="bird-emoji">🐦</div>
+      <div class="app-name">Bird League</div>
+      <div class="tagline">Find · Share · Compete</div>
+      <button class="btn">Sign In</button>
+      <div class="link-text">Don't have an account? <span>Sign up</span></div>
+    </div>
+
+    <!-- Fredoka One -->
+    <div class="card fredoka">
+      <div class="font-label">Fredoka One</div>
+      <div class="bird-emoji">🐦</div>
+      <div class="app-name">Bird League</div>
+      <div class="tagline">Find · Share · Compete</div>
+      <button class="btn">Sign In</button>
+      <div class="link-text">Don't have an account? <span>Sign up</span></div>
+    </div>
+
+  </div>
+
+</body>
+</html>

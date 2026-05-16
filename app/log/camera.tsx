@@ -19,12 +19,13 @@ import { getCurrentLocation, reverseGeocode, LocationData } from '../../lib/loca
 import { logSighting } from '../../lib/firestore/sightings';
 import { updateUserStats } from '../../lib/firestore/users';
 import { useAuthStore } from '../../store/authStore';
-import { Colors } from '../../constants/colors';
+import { useColors } from '../../store/themeStore';
 import { geohashForLocation } from 'geofire-common';
 import type { CommonBird } from '../../lib/commonBirds';
 import SelectBirdModal from '../../components/log/SelectBirdModal';
 
 export default function CameraScreen() {
+  const c = useColors();
   const { user } = useAuthStore();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationData | null>(null);
@@ -105,27 +106,27 @@ export default function CameraScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Photo Log</Text>
-        <Text style={styles.subtitle}>Take or upload a photo, then select the species.</Text>
+    <SafeAreaView style={[s.container, { backgroundColor: c.background }]} edges={['bottom']}>
+      <View style={s.content}>
+        <Text style={[s.title, { color: c.textPrimary }]}>Photo Log</Text>
+        <Text style={[s.subtitle, { color: c.gray }]}>Take or upload a photo, then select the species.</Text>
 
         {photoUri ? (
-          <Image source={{ uri: photoUri }} style={styles.preview} />
+          <Image source={{ uri: photoUri }} style={s.preview} />
         ) : (
-          <View style={styles.placeholder}>
-            <Text style={styles.placeholderIcon}>📷</Text>
-            <Text style={styles.placeholderText}>No photo selected</Text>
+          <View style={[s.placeholder, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Text style={s.placeholderIcon}>📷</Text>
+            <Text style={[s.placeholderText, { color: c.gray }]}>No photo selected</Text>
           </View>
         )}
 
-        {uploading && <ActivityIndicator color={Colors.brown} />}
+        {uploading && <ActivityIndicator color={c.primary} />}
 
-        <TouchableOpacity style={styles.btn} onPress={takePhoto}>
-          <Text style={styles.btnText}>Take Photo</Text>
+        <TouchableOpacity style={[s.btn, { backgroundColor: c.accent }]} onPress={takePhoto}>
+          <Text style={[s.btnText, { color: c.black }]}>Take Photo</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.btn, styles.btnSecondary]} onPress={pickPhoto}>
-          <Text style={[styles.btnText, styles.btnTextSecondary]}>Choose from Library</Text>
+        <TouchableOpacity style={[s.btn, s.btnSecondary, { backgroundColor: c.surface, borderColor: c.border }]} onPress={pickPhoto}>
+          <Text style={[s.btnText, { color: c.textPrimary }]}>Choose from Library</Text>
         </TouchableOpacity>
       </View>
 
@@ -136,24 +137,24 @@ export default function CameraScreen() {
       />
 
       <Modal visible={confirmVisible} transparent animationType="slide">
-        <View style={styles.overlay}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>{selectedBird?.commonName}</Text>
-            <Text style={styles.sheetSci}>{selectedBird?.scientificName}</Text>
-            {location && <Text style={styles.sheetLoc}>📍 {location.locationName}</Text>}
+        <View style={s.overlay}>
+          <View style={[s.sheet, { backgroundColor: c.surface }]}>
+            <Text style={[s.sheetTitle, { color: c.textPrimary }]}>{selectedBird?.commonName}</Text>
+            <Text style={[s.sheetSci, { color: c.gray }]}>{selectedBird?.scientificName}</Text>
+            {location && <Text style={{ fontSize: 14, color: c.gray }}>📍 {location.locationName}</Text>}
             <TextInput
-              style={styles.notesInput}
+              style={[s.notesInput, { backgroundColor: c.background, color: c.textPrimary, borderColor: c.border }]}
               placeholder="Notes (optional)..."
-              placeholderTextColor={Colors.gray}
+              placeholderTextColor={c.gray}
               multiline
               value={notes}
               onChangeText={setNotes}
             />
-            <TouchableOpacity style={styles.submitBtn} onPress={submitSighting} disabled={submitting}>
-              {submitting ? <ActivityIndicator color={Colors.black} /> : <Text style={styles.submitBtnText}>Log Sighting ✓</Text>}
+            <TouchableOpacity style={[s.submitBtn, { backgroundColor: c.accent }]} onPress={submitSighting} disabled={submitting}>
+              {submitting ? <ActivityIndicator color={c.black} /> : <Text style={[s.submitBtnText, { color: c.black }]}>Log Sighting ✓</Text>}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setConfirmVisible(false)}>
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Text style={[s.cancelText, { color: c.gray }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -162,26 +163,24 @@ export default function CameraScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+const s = StyleSheet.create({
+  container: { flex: 1 },
   content: { flex: 1, padding: 24, gap: 16, alignItems: 'center' },
-  title: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary, alignSelf: 'flex-start' },
-  subtitle: { fontSize: 14, color: Colors.gray, alignSelf: 'flex-start' },
+  title: { fontSize: 22, fontWeight: '800', alignSelf: 'flex-start' },
+  subtitle: { fontSize: 14, alignSelf: 'flex-start' },
   preview: { width: '100%', height: 220, borderRadius: 16, resizeMode: 'cover' },
-  placeholder: { width: '100%', height: 220, borderRadius: 16, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  placeholder: { width: '100%', height: 220, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   placeholderIcon: { fontSize: 48 },
-  placeholderText: { color: Colors.gray, fontSize: 14 },
-  btn: { width: '100%', backgroundColor: Colors.yellow, borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
-  btnSecondary: { backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: Colors.border },
-  btnText: { fontSize: 16, fontWeight: '700', color: Colors.black },
-  btnTextSecondary: { color: Colors.textPrimary },
+  placeholderText: { fontSize: 14 },
+  btn: { width: '100%', borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
+  btnSecondary: { borderWidth: 1.5 },
+  btnText: { fontSize: 16, fontWeight: '700' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 12 },
-  sheetTitle: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
-  sheetSci: { fontSize: 14, color: Colors.gray, fontStyle: 'italic' },
-  sheetLoc: { fontSize: 14, color: Colors.gray },
-  notesInput: { backgroundColor: Colors.background, borderRadius: 10, padding: 12, fontSize: 15, color: Colors.textPrimary, borderWidth: 1, borderColor: Colors.border, minHeight: 80, textAlignVertical: 'top' },
-  submitBtn: { backgroundColor: Colors.yellow, borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
-  submitBtnText: { fontSize: 16, fontWeight: '700', color: Colors.black },
-  cancelText: { textAlign: 'center', color: Colors.gray, paddingVertical: 8, fontSize: 15 },
+  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 12 },
+  sheetTitle: { fontSize: 22, fontWeight: '800' },
+  sheetSci: { fontSize: 14, fontStyle: 'italic' },
+  notesInput: { borderRadius: 10, padding: 12, fontSize: 15, borderWidth: 1, minHeight: 80, textAlignVertical: 'top' },
+  submitBtn: { borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
+  submitBtnText: { fontSize: 16, fontWeight: '700' },
+  cancelText: { textAlign: 'center', paddingVertical: 8, fontSize: 15 },
 });

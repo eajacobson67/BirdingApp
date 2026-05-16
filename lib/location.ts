@@ -16,8 +16,12 @@ export async function requestLocationPermission(): Promise<boolean> {
 export async function getCurrentLocation(): Promise<{ lat: number; lng: number } | null> {
   const granted = await requestLocationPermission();
   if (!granted) return null;
-  const pos = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Balanced });
-  return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  try {
+    const pos = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Balanced });
+    return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  } catch {
+    return null;
+  }
 }
 
 export async function reverseGeocode(lat: number, lng: number): Promise<LocationData> {

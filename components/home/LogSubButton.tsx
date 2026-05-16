@@ -1,38 +1,36 @@
-import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
-import { Colors } from '../../constants/colors';
+import { TouchableOpacity, Image, ImageSourcePropType } from 'react-native';
+import { useColors } from '../../store/themeStore';
 
 interface Props {
-  icon: string;
-  label: string;
+  source: ImageSourcePropType;
   onPress: () => void;
+  size?: number;
 }
 
-export function LogSubButton({ icon, label, onPress }: Props) {
+export function LogSubButton({ source, onPress, size = 64 }: Props) {
+  const c = useColors();
   return (
-    <TouchableOpacity style={styles.btn} onPress={onPress} activeOpacity={0.75}>
-      <Text style={styles.icon}>{icon}</Text>
-      <Text style={styles.label}>{label}</Text>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.75}
+      style={{
+        width: size, height: size,
+        borderRadius: size / 2,
+        backgroundColor: c.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.32,
+        shadowRadius: 14,
+        elevation: 12,
+      }}
+    >
+      <Image
+        source={source}
+        style={{ width: size, height: size, tintColor: '#FFFFFF' }}
+        resizeMode="contain"
+      />
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  btn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.surface,
-    borderRadius: 24,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  icon: { fontSize: 20 },
-  label: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-});

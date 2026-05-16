@@ -1,230 +1,181 @@
 import { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-  Modal,
+  View, Text, TextInput, FlatList, TouchableOpacity,
+  StyleSheet, ActivityIndicator, Image, BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { Colors } from '../../constants/colors';
-import { getCurrentLocation, reverseGeocode, LocationData } from '../../lib/location';
-import { getNearbyCommonBirds, CommonBird } from '../../lib/commonBirds';
-import { logSighting } from '../../lib/firestore/sightings';
-import { updateUserStats } from '../../lib/firestore/users';
-import { useAuthStore } from '../../store/authStore';
-import { geohashForLocation } from 'geofire-common';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useColors } from '../../store/themeStore';
+import { CommonBird, getAllSpecies } from '../../lib/commonBirds';
+import { fetchBirdThumbnails } from '../../lib/birdImages';
+import { useBirdsStore } from '../../store/birdsStore';
+import { getRarity, getRarityFromCount, RARITY_COLORS, RARITY_LABELS } from '../../lib/birdRarity';
 
 export default function SelectBirdScreen() {
-  const { user } = useAuthStore();
+  const c = useColors();
+  const { birds, location, loading: loadingBirds } = useBirdsStore();
+  const { prefill } = useLocalSearchParams<{ prefill?: string }>();
+
   const [search, setSearch] = useState('');
-  const [birds, setBirds] = useState<CommonBird[]>([]);
-  const [filtered, setFiltered] = useState<CommonBird[]>([]);
-  const [location, setLocation] = useState<LocationData | null>(null);
-  const [loadingBirds, setLoadingBirds] = useState(true);
-  const [selectedBird, setSelectedBird] = useState<CommonBird | null>(null);
-  const [notes, setNotes] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [confirmVisible, setConfirmVisible] = useState(false);
 
   useEffect(() => {
-    async function init() {
-      const loc = await getCurrentLocation();
-      if (loc) {
-        const geo = await reverseGeocode(loc.lat, loc.lng);
-        setLocation(geo);
-        const nearby = await getNearbyCommonBirds(loc.lat, loc.lng);
-        setBirds(nearby);
-        setFiltered(nearby);
-      }
-      setLoadingBirds(false);
-    }
-    init();
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => { router.back(); return true; });
+    return () => sub.remove();
+  }, []);
+  const [filtered, setFiltered] = useState<CommonBird[]>([]);
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const [allSpecies, setAllSpecies] = useState<CommonBird[] | null>(null);
+
+  const maxVal = Math.max(...birds.map(b => b.abundance ?? b.observationCount ?? 0), 1);
+
+  useEffect(() => {
+    getAllSpecies().then(setAllSpecies).catch(() => {});
   }, []);
 
+  // Auto-navigate when arriving from the listen screen with a prefill
   useEffect(() => {
-    if (!search.trim()) {
-      setFiltered(birds);
+    if (!prefill) return;
+    const source = allSpecies ?? birds;
+    const match = source.find(b => b.commonName.toLowerCase() === prefill.toLowerCase());
+    if (match) selectBird(match);
+  }, [prefill, allSpecies, birds]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const initial: Record<string, string> = {};
+    birds.forEach(b => { if (b.photoUrl) initial[b.commonName] = b.photoUrl; });
+    setThumbnails(initial);
+  }, [birds]);
+
+  useEffect(() => {
+    const missing = filtered
+      .filter(b => !b.photoUrl && !thumbnails[b.commonName])
+      .slice(0, 15)
+      .map(b => b.commonName);
+    if (!missing.length) return;
+    fetchBirdThumbnails(missing)
+      .then(t => setThumbnails(prev => ({ ...prev, ...t })))
+      .catch(() => {});
+  }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!search.trim()) { setFiltered(birds); return; }
+    const q = search.toLowerCase();
+    const source = allSpecies ?? birds;
+    const matches = source.filter(
+      b => b.commonName.toLowerCase().includes(q) || b.scientificName.toLowerCase().includes(q),
+    );
+    if (allSpecies) {
+      const nearbyKeys = new Set(birds.map(b => b.commonName.toLowerCase()));
+      setFiltered([
+        ...matches.filter(b => nearbyKeys.has(b.commonName.toLowerCase())),
+        ...matches.filter(b => !nearbyKeys.has(b.commonName.toLowerCase())),
+      ]);
     } else {
-      const q = search.toLowerCase();
-      setFiltered(birds.filter((b) => b.commonName.toLowerCase().includes(q) || b.scientificName.toLowerCase().includes(q)));
+      setFiltered(matches);
     }
-  }, [search, birds]);
+  }, [search, birds, allSpecies]);
 
   function selectBird(bird: CommonBird) {
-    setSelectedBird(bird);
-    setNotes('');
-    setConfirmVisible(true);
-  }
-
-  async function submitSighting() {
-    if (!selectedBird || !location || !user) return;
-    setSubmitting(true);
-    try {
-      const year = new Date().getFullYear().toString();
-      const geohash = geohashForLocation([location.lat, location.lng]);
-      await logSighting({
-        userId: user.uid,
-        commonName: selectedBird.commonName,
-        scientificName: selectedBird.scientificName,
-        confidence: 1.0,
-        lat: location.lat,
-        lng: location.lng,
-        locationName: location.locationName,
-        state: location.state,
-        country: location.country,
-        photoURL: null,
-        audioURL: null,
-        notes,
-      });
-      await updateUserStats(
-        user.uid,
-        selectedBird.commonName,
-        year,
-        location.state || null,
-        location.lat,
-        location.lng,
-        geohash,
-      );
-      setConfirmVisible(false);
-      router.replace('/(tabs)');
-      Alert.alert('Logged!', `${selectedBird.commonName} added to your life list.`);
-    } catch (e: unknown) {
-      Alert.alert('Error', (e as Error).message);
-    } finally {
-      setSubmitting(false);
-    }
+    router.push({
+      pathname: '/log/confirm',
+      params: { commonName: bird.commonName, scientificName: bird.scientificName },
+    });
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[s.container, { backgroundColor: c.background }]}>
+      <View style={[s.header, { borderBottomColor: c.border }]}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={s.backBtn}>
+          <Ionicons name="chevron-back" size={28} color={c.primary} />
+        </TouchableOpacity>
+        <Text style={[s.headerTitle, { color: c.textPrimary }]}>Log a Sighting</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
       <TextInput
-        style={styles.search}
+        style={[s.search, { backgroundColor: c.surface, color: c.textPrimary, borderColor: c.border }]}
         placeholder="Search species..."
-        placeholderTextColor={Colors.gray}
+        placeholderTextColor={c.gray}
         value={search}
         onChangeText={setSearch}
         autoCorrect={false}
       />
 
       {location && (
-        <Text style={styles.locationLabel}>📍 {location.locationName || 'Your location'}</Text>
+        <Text style={[s.locationLabel, { color: c.gray }]}>📍 {location.locationName || 'Your location'}</Text>
       )}
 
       {loadingBirds ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color={Colors.brown} size="large" />
+        <ActivityIndicator style={{ marginTop: 40 }} color={c.primary} size="large" />
       ) : (
         <FlatList
           data={filtered}
-          keyExtractor={(item) => item.speciesCode}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.birdRow} onPress={() => selectBird(item)} activeOpacity={0.7}>
-              <View>
-                <Text style={styles.commonName}>{item.commonName}</Text>
-                <Text style={styles.sciName}>{item.scientificName}</Text>
-              </View>
-              <Text style={styles.arrow}>›</Text>
-            </TouchableOpacity>
-          )}
+          keyExtractor={item => item.commonName}
+          renderItem={({ item }) => {
+            const val = item.abundance ?? item.observationCount;
+            const rarity = val !== undefined
+              ? getRarityFromCount(val, maxVal, item.commonName)
+              : getRarity(item.commonName);
+            const rarityColor = RARITY_COLORS[rarity];
+            return (
+              <TouchableOpacity
+                style={[s.birdRow, { borderBottomColor: c.border, backgroundColor: c.surface }]}
+                onPress={() => selectBird(item)}
+                activeOpacity={0.7}
+              >
+                {thumbnails[item.commonName] ? (
+                  <Image source={{ uri: thumbnails[item.commonName] }} style={s.thumb} />
+                ) : (
+                  <View style={[s.thumbPlaceholder, { backgroundColor: c.border }]} />
+                )}
+                <View style={s.birdInfo}>
+                  <Text style={[s.commonName, { color: c.textPrimary }]}>{item.commonName}</Text>
+                  <Text style={[s.sciName, { color: c.gray }]}>{item.scientificName}</Text>
+                </View>
+                {rarity !== 'common' && (
+                  <View style={[s.rarityPill, { backgroundColor: rarityColor + '22', borderColor: rarityColor }]}>
+                    <Text style={[s.rarityText, { color: rarityColor }]}>{RARITY_LABELS[rarity]}</Text>
+                  </View>
+                )}
+                <Text style={[s.arrow, { color: c.gray }]}>›</Text>
+              </TouchableOpacity>
+            );
+          }}
           contentContainerStyle={{ paddingBottom: 24 }}
           ListEmptyComponent={
-            <Text style={styles.empty}>No birds found. Try a different search.</Text>
+            <Text style={[s.empty, { color: c.gray }]}>No birds found. Try a different search.</Text>
           }
         />
       )}
-
-      <Modal visible={confirmVisible} transparent animationType="slide">
-        <View style={styles.overlay}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>{selectedBird?.commonName}</Text>
-            <Text style={styles.sheetSci}>{selectedBird?.scientificName}</Text>
-            {location && <Text style={styles.sheetLoc}>📍 {location.locationName}</Text>}
-            <TextInput
-              style={styles.notesInput}
-              placeholder="Notes (optional)..."
-              placeholderTextColor={Colors.gray}
-              multiline
-              value={notes}
-              onChangeText={setNotes}
-            />
-            <TouchableOpacity style={styles.submitBtn} onPress={submitSighting} disabled={submitting}>
-              {submitting ? (
-                <ActivityIndicator color={Colors.black} />
-              ) : (
-                <Text style={styles.submitBtnText}>Log Sighting ✓</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setConfirmVisible(false)}>
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+const s = StyleSheet.create({
+  container: { flex: 1 },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1,
+  },
+  backBtn: { width: 40, alignItems: 'flex-start' },
+  headerTitle: { fontSize: 17, fontWeight: '700' },
   search: {
-    margin: 16,
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: Colors.textPrimary,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    margin: 16, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12,
+    fontSize: 16, borderWidth: 1,
   },
-  locationLabel: { fontSize: 13, color: Colors.gray, marginLeft: 16, marginBottom: 8 },
+  locationLabel: { fontSize: 13, marginLeft: 16, marginBottom: 8 },
   birdRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.surface,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1,
   },
-  commonName: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
-  sciName: { fontSize: 13, color: Colors.gray, fontStyle: 'italic', marginTop: 2 },
-  arrow: { fontSize: 20, color: Colors.gray },
-  empty: { textAlign: 'center', color: Colors.gray, marginTop: 48, fontSize: 15 },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: Colors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
-    gap: 12,
-  },
-  sheetTitle: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
-  sheetSci: { fontSize: 14, color: Colors.gray, fontStyle: 'italic' },
-  sheetLoc: { fontSize: 14, color: Colors.gray },
-  notesInput: {
-    backgroundColor: Colors.background,
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
-    color: Colors.textPrimary,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  submitBtn: {
-    backgroundColor: Colors.yellow,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  submitBtnText: { fontSize: 16, fontWeight: '700', color: Colors.black },
-  cancelText: { textAlign: 'center', color: Colors.gray, paddingVertical: 8, fontSize: 15 },
+  thumb: { width: 44, height: 44, borderRadius: 8 },
+  thumbPlaceholder: { width: 44, height: 44, borderRadius: 8 },
+  birdInfo: { flex: 1 },
+  commonName: { fontSize: 16, fontWeight: '600' },
+  sciName: { fontSize: 13, fontStyle: 'italic', marginTop: 2 },
+  arrow: { fontSize: 20 },
+  empty: { textAlign: 'center', marginTop: 48, fontSize: 15 },
+  rarityPill: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  rarityText: { fontSize: 11, fontWeight: '700' },
 });

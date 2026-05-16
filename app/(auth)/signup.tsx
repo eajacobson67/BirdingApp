@@ -11,35 +11,87 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { createUserProfile } from '../../lib/firestore/users';
-import { Colors } from '../../constants/colors';
+import { useColors } from '../../store/themeStore';
+import { getAuthErrorMessage } from '../../lib/authErrors';
+
+function StrengthRow({ met, label }: { met: boolean; label: string }) {
+  const c = useColors();
+  return (
+    <View style={s.strengthRow}>
+      <Ionicons
+        name={met ? 'checkmark-circle' : 'ellipse-outline'}
+        size={14}
+        color={met ? '#5C9E3E' : c.gray}
+      />
+      <Text style={[s.strengthLabel, { color: c.gray }, met && { color: c.textPrimary }]}>{label}</Text>
+    </View>
+  );
+}
+
+interface PasswordFieldProps {
+  placeholder: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  hasError?: boolean;
+}
+
+function PasswordField({ placeholder, value, onChangeText, hasError }: PasswordFieldProps) {
+  const c = useColors();
+  const [show, setShow] = useState(false);
+  return (
+    <View style={[s.passwordWrap, { backgroundColor: c.surface, borderColor: hasError ? c.danger : c.border }]}>
+      <TextInput
+        style={[s.passwordInput, { color: c.textPrimary }]}
+        placeholder={placeholder}
+        placeholderTextColor={c.gray}
+        secureTextEntry={!show}
+        value={value}
+        onChangeText={onChangeText}
+      />
+      <TouchableOpacity style={s.eyeBtn} onPress={() => setShow((v) => !v)} hitSlop={8}>
+        <Ionicons name={show ? 'eye-off-outline' : 'eye-outline'} size={20} color={c.gray} />
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 export default function SignupScreen() {
+  const c = useColors();
   const [username, setUsername] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [retypePassword, setRetypePassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const hasLength = password.length >= 6;
+  const passwordValid = hasLength;
+  const passwordsMatch = retypePassword.length > 0 && password === retypePassword;
+
   async function handleSignup() {
-    if (!username || !displayName || !email || !password) {
+    if (!username || !email || !password || !retypePassword) {
       Alert.alert('Missing fields', 'Please fill in all fields.');
       return;
     }
-    if (password.length < 6) {
+    if (!passwordValid) {
       Alert.alert('Weak password', 'Password must be at least 6 characters.');
+      return;
+    }
+    if (password !== retypePassword) {
+      Alert.alert("Passwords don't match", 'Please make sure your passwords match.');
       return;
     }
     setLoading(true);
     try {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-      await createUserProfile(cred.user.uid, username.trim().toLowerCase(), displayName.trim());
+      await createUserProfile(cred.user.uid, username.trim().toLowerCase(), username.trim());
       router.replace('/(tabs)');
     } catch (e: unknown) {
-      Alert.alert('Sign up failed', (e as Error).message);
+      Alert.alert('Sign up failed', getAuthErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -47,91 +99,122 @@ export default function SignupScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={[s.container, { backgroundColor: c.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.inner}>
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join the birding community</Text>
+      <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
+        <Ionicons name="arrow-back" size={24} color={c.textPrimary} />
+      </TouchableOpacity>
+
+      <ScrollView
+        contentContainerStyle={s.inner}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={[s.title, { color: c.primary }]}>Create Account</Text>
+        <Text style={[s.subtitle, { color: c.gray }]}>Join the birding community</Text>
 
         <TextInput
-          style={styles.input}
-          placeholder="Display name"
-          placeholderTextColor={Colors.gray}
-          value={displayName}
-          onChangeText={setDisplayName}
-        />
-        <TextInput
-          style={styles.input}
+          style={[s.input, { backgroundColor: c.surface, color: c.textPrimary, borderColor: c.border }]}
           placeholder="Username (e.g. robin_watcher)"
-          placeholderTextColor={Colors.gray}
+          placeholderTextColor={c.gray}
           autoCapitalize="none"
+          autoCorrect={false}
           value={username}
           onChangeText={setUsername}
         />
         <TextInput
-          style={styles.input}
+          style={[s.input, { backgroundColor: c.surface, color: c.textPrimary, borderColor: c.border }]}
           placeholder="Email"
-          placeholderTextColor={Colors.gray}
+          placeholderTextColor={c.gray}
           keyboardType="email-address"
           autoCapitalize="none"
           value={email}
           onChangeText={setEmail}
         />
-        <TextInput
-          style={styles.input}
-          placeholder="Password (6+ characters)"
-          placeholderTextColor={Colors.gray}
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
 
-        <TouchableOpacity style={styles.btn} onPress={handleSignup} disabled={loading}>
+        <PasswordField placeholder="Password" value={password} onChangeText={setPassword} />
+
+        {password.length > 0 && (
+          <View style={[s.strengthBox, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <StrengthRow met={hasLength} label="At least 6 characters" />
+          </View>
+        )}
+
+        <PasswordField
+          placeholder="Retype password"
+          value={retypePassword}
+          onChangeText={setRetypePassword}
+          hasError={retypePassword.length > 0 && !passwordsMatch}
+        />
+        {retypePassword.length > 0 && !passwordsMatch && (
+          <Text style={[s.errorText, { color: c.danger }]}>Passwords don't match</Text>
+        )}
+
+        <TouchableOpacity style={[s.btn, { backgroundColor: c.accent }]} onPress={handleSignup} disabled={loading}>
           {loading ? (
-            <ActivityIndicator color={Colors.black} />
+            <ActivityIndicator color={c.black} />
           ) : (
-            <Text style={styles.btnText}>Create Account</Text>
+            <Text style={[s.btnText, { color: c.black }]}>Create Account</Text>
           )}
         </TouchableOpacity>
-
-        <Link href="/(auth)/login" style={styles.link}>
-          Already have an account? <Text style={styles.linkBold}>Sign in</Text>
-        </Link>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+const s = StyleSheet.create({
+  container: { flex: 1 },
+  backBtn: {
+    position: 'absolute',
+    top: 56,
+    left: 20,
+    zIndex: 10,
+    padding: 8,
+  },
   inner: {
-    flexGrow: 1,
-    justifyContent: 'center',
+    paddingTop: 100,
     paddingHorizontal: 32,
-    paddingVertical: 48,
+    paddingBottom: 48,
     gap: 12,
   },
-  title: { fontSize: 28, fontWeight: '800', color: Colors.brown, marginBottom: 4 },
-  subtitle: { fontSize: 14, color: Colors.gray, marginBottom: 24, letterSpacing: 0.5 },
+  title: { fontSize: 28, fontWeight: '800', marginBottom: 4 },
+  subtitle: { fontSize: 14, marginBottom: 12, letterSpacing: 0.5 },
   input: {
-    backgroundColor: Colors.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: Colors.textPrimary,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
+  passwordWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+  },
+  eyeBtn: { paddingHorizontal: 14 },
+  strengthBox: {
+    borderRadius: 10,
+    padding: 12,
+    gap: 6,
+    borderWidth: 1,
+    marginTop: -4,
+  },
+  strengthRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  strengthLabel: { fontSize: 12 },
+  errorText: { fontSize: 12, marginTop: -4 },
   btn: {
-    backgroundColor: Colors.yellow,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
   },
-  btnText: { fontSize: 16, fontWeight: '700', color: Colors.black },
-  link: { textAlign: 'center', color: Colors.gray, marginTop: 16, fontSize: 14 },
-  linkBold: { color: Colors.brown, fontWeight: '700' },
+  btnText: { fontSize: 16, fontWeight: '700' },
 });

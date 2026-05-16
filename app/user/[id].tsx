@@ -1,30 +1,17 @@
 import { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { Colors } from '../../constants/colors';
+import { useColors } from '../../store/themeStore';
 import { useAuthStore } from '../../store/authStore';
 import { getUserProfile, UserProfile } from '../../lib/firestore/users';
 import { getUserSightings, Sighting } from '../../lib/firestore/sightings';
-import {
-  getConnectionStatus,
-  sendFriendRequest,
-  acceptFriendRequest,
-  removeFriend,
-  Connection,
-} from '../../lib/firestore/friends';
+import { getConnectionStatus, sendFriendRequest, acceptFriendRequest, removeFriend, Connection } from '../../lib/firestore/friends';
 import { StatCard } from '../../components/ui/StatCard';
 import { BadgeIcon, BADGES } from '../../components/ui/BadgeIcon';
 
 export default function UserProfileScreen() {
+  const c = useColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -33,24 +20,15 @@ export default function UserProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [lifeListExpanded, setLifeListExpanded] = useState(false);
-
   const year = new Date().getFullYear().toString();
 
   useEffect(() => {
     if (!id || !user) return;
-    Promise.all([
-      getUserProfile(id),
-      getUserSightings(id, 20),
-      getConnectionStatus(user.uid, id),
-    ]).then(([p, s, c]) => {
-      setProfile(p);
-      setSightings(s);
-      setConnection(c);
-      setLoading(false);
-    });
+    Promise.all([getUserProfile(id), getUserSightings(id, 20), getConnectionStatus(user.uid, id)])
+      .then(([p, s, conn]) => { setProfile(p); setSightings(s); setConnection(conn); setLoading(false); });
   }, [id, user]);
 
-  async function handleFriendAction() {
+  async function handleFriendAction(accept?: boolean) {
     if (!user || !id) return;
     setActionLoading(true);
     try {
@@ -59,30 +37,34 @@ export default function UserProfileScreen() {
         setConnection({ status: 'pending', since: new Date(), direction: 'sent' });
         Alert.alert('Request sent!', `Friend request sent to ${profile?.displayName}.`);
       } else if (connection.status === 'pending' && connection.direction === 'received') {
-        await acceptFriendRequest(user.uid, id);
-        setConnection({ status: 'accepted', since: new Date() });
+        if (accept) {
+          await acceptFriendRequest(user.uid, id);
+          setConnection({ status: 'accepted', since: new Date() });
+        } else {
+          await removeFriend(user.uid, id);
+          setConnection(null);
+        }
       } else if (connection.status === 'accepted') {
         await removeFriend(user.uid, id);
         setConnection(null);
       }
     } catch (e: unknown) {
       Alert.alert('Error', (e as Error).message);
-    } finally {
-      setActionLoading(false);
-    }
+    } finally { setActionLoading(false); }
   }
 
   function friendButtonLabel(): string {
     if (!connection) return 'Add Friend';
     if (connection.status === 'pending' && connection.direction === 'sent') return 'Request Sent';
-    if (connection.status === 'pending' && connection.direction === 'received') return 'Accept Request';
     return 'Friends ✓';
   }
 
+  const isPendingReceived = connection?.status === 'pending' && connection?.direction === 'received';
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={Colors.brown} size="large" style={{ marginTop: 80 }} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
+        <ActivityIndicator color={c.primary} size="large" style={{ marginTop: 80 }} />
       </SafeAreaView>
     );
   }
@@ -92,35 +74,55 @@ export default function UserProfileScreen() {
   const earnedBadges = BADGES.filter((b) => b.check(profile));
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }} edges={['bottom']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 48 }}>
-        <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarEmoji}>🐦</Text>
+        <View style={[s.header, { backgroundColor: c.surface, borderBottomColor: c.border }]}>
+          <View style={[s.avatar, { backgroundColor: c.background, borderColor: c.border }]}>
+            <Text style={s.avatarEmoji}>🐦</Text>
           </View>
-          <View style={styles.headerMeta}>
-            <Text style={styles.displayName}>{profile?.displayName ?? 'Birder'}</Text>
-            <Text style={styles.username}>@{profile?.username}</Text>
-            {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
+          <View style={s.headerMeta}>
+            <Text style={[s.displayName, { color: c.textPrimary }]}>{profile?.displayName ?? 'Birder'}</Text>
+            <Text style={[s.username, { color: c.gray }]}>@{profile?.username}</Text>
+            {profile?.bio ? <Text style={[s.bio, { color: c.gray }]}>{profile.bio}</Text> : null}
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[
-            styles.friendBtn,
-            connection?.status === 'accepted' && styles.friendBtnActive,
-          ]}
-          onPress={handleFriendAction}
-          disabled={actionLoading || connection?.direction === 'sent'}
-        >
-          {actionLoading ? (
-            <ActivityIndicator color={Colors.black} size="small" />
-          ) : (
-            <Text style={styles.friendBtnText}>{friendButtonLabel()}</Text>
-          )}
-        </TouchableOpacity>
+        {isPendingReceived ? (
+          <View style={s.friendBtnRow}>
+            <TouchableOpacity
+              style={[s.friendBtn, { flex: 1, backgroundColor: c.primary }]}
+              onPress={() => handleFriendAction(true)}
+              disabled={actionLoading}
+            >
+              {actionLoading
+                ? <ActivityIndicator color="#FFFFFF" size="small" />
+                : <Text style={[s.friendBtnText, { color: '#FFFFFF' }]}>Accept</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.friendBtn, { flex: 1, backgroundColor: c.surface, borderWidth: 1.5, borderColor: c.border }]}
+              onPress={() => handleFriendAction(false)}
+              disabled={actionLoading}
+            >
+              <Text style={[s.friendBtnText, { color: c.gray }]}>Decline</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[
+              s.friendBtn,
+              { margin: 16, backgroundColor: connection?.status === 'accepted' ? c.surface : c.accent },
+              connection?.status === 'accepted' && { borderWidth: 1.5, borderColor: c.primary },
+            ]}
+            onPress={() => handleFriendAction()}
+            disabled={actionLoading || connection?.direction === 'sent'}
+          >
+            {actionLoading
+              ? <ActivityIndicator color={c.black} size="small" />
+              : <Text style={[s.friendBtnText, { color: c.black }]}>{friendButtonLabel()}</Text>}
+          </TouchableOpacity>
+        )}
 
-        <View style={styles.statsRow}>
+        <View style={s.statsRow}>
           <StatCard label="Total Birds" value={profile?.totalSightings ?? 0} />
           <StatCard label="Species" value={profile?.totalSpecies ?? 0} />
           <StatCard label={`${year} Big Year`} value={bigYear} accent />
@@ -128,33 +130,33 @@ export default function UserProfileScreen() {
         </View>
 
         {earnedBadges.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Badges</Text>
+          <View style={s.section}>
+            <Text style={[s.sectionTitle, { color: c.textPrimary }]}>Badges</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 20 }}>
               {earnedBadges.map((b) => <BadgeIcon key={b.id} badge={b} />)}
             </ScrollView>
           </View>
         )}
 
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.sectionHeader} onPress={() => setLifeListExpanded((v) => !v)}>
-            <Text style={styles.sectionTitle}>Life List ({lifeList.length})</Text>
-            <Text style={styles.expandIcon}>{lifeListExpanded ? '▲' : '▼'}</Text>
+        <View style={s.section}>
+          <TouchableOpacity style={s.sectionHeader} onPress={() => setLifeListExpanded((v) => !v)}>
+            <Text style={[s.sectionTitle, { color: c.textPrimary }]}>Life List ({lifeList.length})</Text>
+            <Text style={{ color: c.gray, fontSize: 14 }}>{lifeListExpanded ? '▲' : '▼'}</Text>
           </TouchableOpacity>
           {lifeListExpanded && lifeList.map((species) => (
-            <Text key={species} style={styles.lifeListItem}>• {species}</Text>
+            <Text key={species} style={[s.lifeListItem, { color: c.textPrimary }]}>• {species}</Text>
           ))}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Sightings</Text>
-          {sightings.map((s) => (
-            <TouchableOpacity key={s.id} style={styles.sightingRow} onPress={() => router.push(`/sighting/${s.id}`)}>
+        <View style={s.section}>
+          <Text style={[s.sectionTitle, { color: c.textPrimary }]}>Recent Sightings</Text>
+          {sightings.map((sig) => (
+            <TouchableOpacity key={sig.id} style={[s.sightingRow, { borderBottomColor: c.border }]} onPress={() => router.push(`/sighting/${sig.id}`)}>
               <View>
-                <Text style={styles.sightingSpecies}>{s.commonName}</Text>
-                <Text style={styles.sightingMeta}>{s.locationName} · {formatAgo(s.timestamp)}</Text>
+                <Text style={[s.sightingSpecies, { color: c.textPrimary }]}>{sig.commonName}</Text>
+                <Text style={[s.sightingMeta, { color: c.gray }]}>{sig.locationName} · {formatAgo(sig.timestamp)}</Text>
               </View>
-              <Text style={styles.arrow}>›</Text>
+              <Text style={{ fontSize: 20, color: c.gray }}>›</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -172,26 +174,23 @@ function formatAgo(date: Date): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: { flexDirection: 'row', gap: 16, padding: 20, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.cream, borderWidth: 2, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+const s = StyleSheet.create({
+  header: { flexDirection: 'row', gap: 16, padding: 20, borderBottomWidth: 1 },
+  avatar: { width: 64, height: 64, borderRadius: 32, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   avatarEmoji: { fontSize: 32 },
   headerMeta: { flex: 1 },
-  displayName: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
-  username: { fontSize: 14, color: Colors.gray, marginTop: 2 },
-  bio: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
-  friendBtn: { margin: 16, backgroundColor: Colors.yellow, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  friendBtnActive: { backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: Colors.brown },
-  friendBtnText: { fontSize: 15, fontWeight: '700', color: Colors.black },
+  displayName: { fontSize: 20, fontWeight: '800' },
+  username: { fontSize: 14, marginTop: 2 },
+  bio: { fontSize: 13, marginTop: 4 },
+  friendBtnRow: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginVertical: 8 },
+  friendBtn: { borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  friendBtnText: { fontSize: 15, fontWeight: '700' },
   statsRow: { flexDirection: 'row', gap: 10, padding: 16, flexWrap: 'wrap' },
   section: { marginTop: 16, paddingHorizontal: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary, marginBottom: 12 },
-  expandIcon: { color: Colors.gray, fontSize: 14 },
-  lifeListItem: { fontSize: 14, color: Colors.textPrimary, paddingVertical: 4 },
-  sightingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  sightingSpecies: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
-  sightingMeta: { fontSize: 13, color: Colors.gray, marginTop: 2 },
-  arrow: { fontSize: 20, color: Colors.gray },
+  sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 12 },
+  lifeListItem: { fontSize: 14, paddingVertical: 4 },
+  sightingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1 },
+  sightingSpecies: { fontSize: 15, fontWeight: '600' },
+  sightingMeta: { fontSize: 13, marginTop: 2 },
 });

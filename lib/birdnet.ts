@@ -1,6 +1,6 @@
-// TODO: Register for a BirdNET API key at https://birdnet.cornell.edu/api/
-const BIRDNET_API_KEY = 'YOUR_BIRDNET_API_KEY';
-const BIRDNET_BASE = 'https://birdnet.cornell.edu/api/v2';
+import { auth } from './firebase';
+
+const BIRDNET_ENDPOINT = 'https://birdnet-132532463413.us-central1.run.app/analyze';
 
 export interface BirdNetResult {
   commonName: string;
@@ -14,32 +14,62 @@ export async function identifyFromAudio(
   lng: number,
   date: string, // YYYY-MM-DD
 ): Promise<BirdNetResult[]> {
-  const response = await fetch(`${BIRDNET_BASE}/analyze`, {
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await fetch(BIRDNET_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${BIRDNET_API_KEY}`,
+      'Authorization': `Bearer ${token}`,
     },
-    body: JSON.stringify({
-      url: audioUrl,
-      latitude: lat,
-      longitude: lng,
-      date,
-      min_confidence: 0.1,
-      num_results: 5,
-    }),
+    body: JSON.stringify({ url: audioUrl, lat, lon: lng, date, min_confidence: 0.1 }),
   });
 
   if (!response.ok) {
-    throw new Error(`BirdNET API error: ${response.status}`);
+    const body = await response.text().catch(() => '');
+    throw new Error(`BirdNET ${response.status}: ${body.slice(0, 300)}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as { results: Array<Record<string, unknown>> };
+  return data.results.map(r => ({
+    commonName:     String(r.common_name     ?? 'Unknown'),
+    scientificName: String(r.scientific_name ?? ''),
+    confidence:     Number(r.confidence      ?? 0),
+  }));
+}
 
-  // Normalize response — actual field names may differ per BirdNET API version
-  return (data.results ?? data.detections ?? []).map((item: Record<string, unknown>) => ({
-    commonName: (item.common_name ?? item.commonName ?? 'Unknown') as string,
-    scientificName: (item.scientific_name ?? item.scientificName ?? '') as string,
-    confidence: (item.confidence ?? item.score ?? 0) as number,
+export async function identifyFromLocalUri(
+  localUri: string,
+  lat: number,
+  lng: number,
+  date: string,
+): Promise<BirdNetResult[]> {
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const form = new FormData();
+  form.append('file', { uri: localUri, name: 'chunk.m4a', type: 'audio/m4a' } as unknown as Blob);
+  form.append('lat', String(lat));
+  form.append('lon', String(lng));
+  form.append('date', date);
+  form.append('min_confidence', '0.1');
+
+  const response = await fetch(BIRDNET_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: form,
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`BirdNET ${response.status}: ${body.slice(0, 300)}`);
+  }
+
+  const data = await response.json() as { results: Array<Record<string, unknown>> };
+  return data.results.map(r => ({
+    commonName:     String(r.common_name     ?? 'Unknown'),
+    scientificName: String(r.scientific_name ?? ''),
+    confidence:     Number(r.confidence      ?? 0),
   }));
 }

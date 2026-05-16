@@ -6,12 +6,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // TODO: Replace with your Firebase project config from https://console.firebase.google.com
 const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_PROJECT.firebaseapp.com',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_PROJECT.appspot.com',
-  messagingSenderId: 'YOUR_SENDER_ID',
-  appId: 'YOUR_APP_ID',
+  apiKey: "AIzaSyA96oYtGFmXuXoDc06e9_GITo9pJXMeJfc",
+  authDomain: "birding-app-1a446.firebaseapp.com",
+  projectId: "birding-app-1a446",
+  storageBucket: "birding-app-1a446.firebasestorage.app",
+  messagingSenderId: "132532463413",
+  appId: "1:132532463413:web:f00efac1f0051e0edf4e7c",
+  measurementId: "G-ZSQP1V8LZK"
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();

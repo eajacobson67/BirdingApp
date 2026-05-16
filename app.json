@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "BirdApp",
+    "name": "Bird League",
     "slug": "birdapp",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -25,6 +25,11 @@
       }
     },
     "android": {
+      "config": {
+        "googleMaps": {
+          "apiKey": "REMOVED"
+        }
+      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F5EFE0"
@@ -35,7 +40,15 @@
         "ACCESS_COARSE_LOCATION",
         "RECORD_AUDIO",
         "CAMERA",
-        "READ_EXTERNAL_STORAGE"
+        "READ_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE"
       ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -48,6 +61,14 @@
       "expo-router",
       "expo-location",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#F5EFE0",
+          "androidMode": "default"
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "BirdApp uses your camera to photograph birds."
@@ -58,10 +79,26 @@
         {
           "microphonePermission": "BirdApp uses your microphone to record bird calls."
         }
-      ]
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "BirdApp accesses your photos to select images for bird sightings.",
+          "savePhotosPermission": false,
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5d5c3329-7e8d-492f-8642-61914a65ba06"
+      }
+    },
+    "owner": "eajacobson67"
   }
 }

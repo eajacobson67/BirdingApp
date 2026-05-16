@@ -14,6 +14,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+import { type Rarity, getRarity } from '../birdRarity';
 
 export interface Sighting {
   id: string;
@@ -31,6 +32,7 @@ export interface Sighting {
   timestamp: Date;
   isPublic: boolean;
   likes: number;
+  rarity: Rarity;
 }
 
 export async function logSighting(data: {
@@ -53,6 +55,7 @@ export async function logSighting(data: {
     timestamp: serverTimestamp(),
     isPublic: true,
     likes: 0,
+    rarity: getRarity(data.commonName),
   });
   return ref.id;
 }
@@ -66,6 +69,7 @@ export async function getSighting(id: string): Promise<Sighting | null> {
     ...d,
     location: { lat: d.location.latitude, lng: d.location.longitude },
     timestamp: (d.timestamp as Timestamp).toDate(),
+    rarity: d.rarity ?? getRarity(d.commonName),
   } as Sighting;
 }
 
@@ -84,6 +88,7 @@ export async function getRecentPublicSightings(count = 200): Promise<Sighting[]>
       ...data,
       location: { lat: data.location.latitude, lng: data.location.longitude },
       timestamp: (data.timestamp as Timestamp).toDate(),
+      rarity: data.rarity ?? getRarity(data.commonName),
     } as Sighting;
   });
 }
@@ -111,6 +116,7 @@ export function subscribeToFriendSightings(
         ...data,
         location: { lat: data.location.latitude, lng: data.location.longitude },
         timestamp: (data.timestamp as Timestamp)?.toDate?.() ?? new Date(),
+        rarity: data.rarity ?? getRarity(data.commonName),
       } as Sighting;
     });
     callback(sightings);
@@ -132,6 +138,7 @@ export async function getUserSightings(userId: string, count = 100): Promise<Sig
       ...data,
       location: { lat: data.location.latitude, lng: data.location.longitude },
       timestamp: (data.timestamp as Timestamp)?.toDate?.() ?? new Date(),
+      rarity: data.rarity ?? getRarity(data.commonName),
     } as Sighting;
   });
 }

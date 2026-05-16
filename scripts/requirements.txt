@@ -1,0 +1,11 @@
+birdnetlib
+librosa
+resampy
+soxr
+soundfile
+tensorflow
+firebase-admin
+fastapi
+python-multipart
+uvicorn[standard]
+httpx

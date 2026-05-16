@@ -1,0 +1,5 @@
+httpx
+firebase-admin
+fastapi
+python-multipart
+uvicorn[standard]

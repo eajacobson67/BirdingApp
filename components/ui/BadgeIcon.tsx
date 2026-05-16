@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { Colors } from '../../constants/colors';
+import { View, Text } from 'react-native';
+import { useColors } from '../../store/themeStore';
 import type { UserProfile } from '../../lib/firestore/users';
 
 export interface Badge {
@@ -24,30 +24,21 @@ export const BADGES: Badge[] = [
   }},
 ];
 
-interface Props {
-  badge: Badge;
-}
+interface Props { badge: Badge }
 
 export function BadgeIcon({ badge }: Props) {
+  const c = useColors();
   return (
-    <View style={styles.badge}>
-      <Text style={styles.emoji}>{badge.emoji}</Text>
-      <Text style={styles.label}>{badge.label}</Text>
+    <View style={{
+      alignItems: 'center', gap: 6,
+      backgroundColor: c.surface,
+      borderRadius: 12, padding: 12,
+      minWidth: 76, borderWidth: 1, borderColor: c.border,
+    }}>
+      <Text style={{ fontSize: 28 }}>{badge.emoji}</Text>
+      <Text style={{ fontSize: 10, color: c.gray, textAlign: 'center', fontWeight: '600' }}>
+        {badge.label}
+      </Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  badge: {
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 12,
-    minWidth: 76,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  emoji: { fontSize: 28 },
-  label: { fontSize: 10, color: Colors.gray, textAlign: 'center', fontWeight: '600' },
-});
