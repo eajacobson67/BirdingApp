@@ -31,18 +31,28 @@ INAT_API_TOKEN_URL = "https://www.inaturalist.org/users/api_token"
 def get_inat_jwt(username: str, password: str) -> str:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        ctx     = browser.new_context()
-        page    = ctx.new_page()
+        ctx     = browser.new_context(
+            user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+        )
+        page = ctx.new_page()
 
-        page.goto(INAT_LOGIN_URL, wait_until="networkidle")
-        page.fill('input[name="user[login]"]',    username)
-        page.fill('input[name="user[password]"]', password)
-        page.click('input[type="submit"], button[type="submit"]')
+        page.goto(INAT_LOGIN_URL, wait_until="domcontentloaded", timeout=30000)
+        page.screenshot(path="/tmp/inat_login.png")
+
+        # Rails generates id="user_login" from name="user[login]"
+        login_selector    = "#user_login, input[name='user[login]']"
+        password_selector = "#user_password, input[name='user[password]']"
+
+        page.wait_for_selector(login_selector, timeout=15000)
+        page.fill(login_selector,    username)
+        page.fill(password_selector, password)
+        page.click("input[type='submit'], button[type='submit']")
 
         try:
             page.wait_for_url(lambda url: "/login" not in url, timeout=15000)
         except Exception:
-            raise RuntimeError("iNaturalist login failed — check INAT_USERNAME / INAT_PASSWORD")
+            page.screenshot(path="/tmp/inat_after_login.png")
+            raise RuntimeError("iNaturalist login failed — check INAT_USERNAME / INAT_PASSWORD secrets")
 
         response = ctx.request.get(
             INAT_API_TOKEN_URL,

@@ -35,3 +35,11 @@ jobs:
           GCP_REGION:    us-central1
           CLOUD_RUN_SVC: birdvision
         run: python scripts/refresh_inat_token.py
+
+      - name: Upload debug screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots
+          path: /tmp/inat_*.png
+          if-no-files-found: ignore
