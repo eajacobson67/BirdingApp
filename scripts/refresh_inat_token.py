@@ -39,14 +39,13 @@ def get_inat_jwt(username: str, password: str) -> str:
         page.goto(INAT_LOGIN_URL, wait_until="domcontentloaded", timeout=30000)
         page.screenshot(path="/tmp/inat_login.png")
 
-        # Rails generates id="user_login" from name="user[login]"
-        login_selector    = "#user_login, input[name='user[login]']"
-        password_selector = "#user_password, input[name='user[password]']"
+        login_selector    = "input[placeholder='Username or email']"
+        password_selector = "input[placeholder='Password']"
 
         page.wait_for_selector(login_selector, timeout=15000)
         page.fill(login_selector,    username)
         page.fill(password_selector, password)
-        page.click("input[type='submit'], button[type='submit']")
+        page.click("button:has-text('Log In')")
 
         try:
             page.wait_for_url(lambda url: "/login" not in url, timeout=15000)
