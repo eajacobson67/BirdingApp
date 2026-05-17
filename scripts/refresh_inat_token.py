@@ -45,7 +45,7 @@ def get_inat_jwt(username: str, password: str) -> str:
         page.wait_for_selector(login_selector, timeout=15000)
         page.fill(login_selector,    username)
         page.fill(password_selector, password)
-        page.click("button:has-text('Log In')")
+        page.keyboard.press("Enter")
 
         try:
             page.wait_for_url(lambda url: "/login" not in url, timeout=15000)
