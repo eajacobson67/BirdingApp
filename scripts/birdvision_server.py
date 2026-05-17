@@ -2,17 +2,18 @@
 """
 Bird vision server — proxies to iNaturalist computer vision API.
 
-iNaturalist combines image recognition with geographic frequency data,
-giving much better results than a standalone image classifier.
-
-Setup:
+Token setup (manual, expires every 24 h):
     1. Log in to iNaturalist, then visit:
        https://www.inaturalist.org/users/api_token
-       Copy the token shown there.
-    2. Set it as a Cloud Run env var:
-       gcloud run services update birdvision --set-env-vars INAT_TOKEN=<your-token>
+       Copy the JWT shown there.
+    2. Update the Cloud Run env var:
+       gcloud run services update birdvision \
+         --set-env-vars INAT_TOKEN=<new-token> --region us-central1
 
-    pip install -r requirements.birdvision.txt
+TODO: Switch to OAuth2 ROPC once the iNaturalist account is ≥ 2 months old.
+      Register app at https://www.inaturalist.org/oauth/applications/new,
+      then replace INAT_TOKEN with INAT_CLIENT_ID / INAT_CLIENT_SECRET /
+      INAT_USERNAME / INAT_PASSWORD and use the oauth branch in git history.
 
 Run locally:
     INAT_TOKEN=xxx python scripts/birdvision_server.py
@@ -25,13 +26,6 @@ Endpoint:
     lat:   float
     lng:   float
     date:  YYYY-MM-DD (optional)
-
-    200 response:
-    {
-        "results": [
-            { "common_name": "American Robin", "scientific_name": "Turdus migratorius", "confidence": 0.91 }
-        ]
-    }
 """
 
 import os
@@ -49,7 +43,7 @@ firebase_admin.initialize_app(options={"projectId": "birding-app-1a446"})
 
 INAT_TOKEN      = os.environ.get("INAT_TOKEN", "")
 INAT_ENDPOINT   = "https://api.inaturalist.org/v1/computervision/score_image"
-AVES_TAXON_ID   = 3       # iNaturalist taxon ID for birds
+AVES_TAXON_ID   = 3
 RATE_LIMIT      = 10
 RATE_WINDOW_SEC = 60
 MAX_IMAGE_BYTES = 10 * 1024 * 1024

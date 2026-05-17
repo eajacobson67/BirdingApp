@@ -29,22 +29,23 @@ export default function RootLayout() {
   const setBirdStyle = useThemeStore((s) => s.setBirdStyle);
 
   useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      router.replace('/(auth)/login');
-    } else {
-      router.replace('/(tabs)');
-      fetchBirds();
-      getUserProfile(user.uid).then((profile) => {
-        const id = (profile as unknown as Record<string, string>)?.birdStyleId;
-        if (id) setBirdStyle(id);
-        setIsAdmin(profile?.isAdmin ?? false);
-      });
-      registerPushToken(user.uid).catch(() => {});
-    }
-  }, [user, loading]);
-
-  if (!fontsLoaded) return null;
+    if (!fontsLoaded || loading) return;
+    const t = setTimeout(() => {
+      if (!user) {
+        router.replace('/(auth)/login');
+      } else {
+        router.replace('/(tabs)');
+        fetchBirds();
+        getUserProfile(user.uid).then((profile) => {
+          const id = (profile as unknown as Record<string, string>)?.birdStyleId;
+          if (id) setBirdStyle(id);
+          setIsAdmin(profile?.isAdmin ?? false);
+        });
+        registerPushToken(user.uid).catch(() => {});
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, [user, loading, fontsLoaded]);
 
   return (
     <>

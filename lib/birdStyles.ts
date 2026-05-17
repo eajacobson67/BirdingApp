@@ -61,4 +61,13 @@ export const BIRD_STYLES: BirdStyle[] = [
       surface: '#FFFFFF', border: '#B8D9B4', gray: '#7BA88A', danger: '#D94A3A',
     },
   },
+  {
+    id: 'housesparrow',
+    label: 'House Sparrow',
+    body: '#B79A7B',
+    theme: {
+      primary: '#8A5A3B', accent: '#6C7173', background: '#F0E9DF',
+      surface: '#FFFFFF', border: '#DED0BC', gray: '#9E9089', danger: '#8C3A2A',
+    },
+  },
 ];

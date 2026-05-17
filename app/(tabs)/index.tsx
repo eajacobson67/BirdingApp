@@ -16,7 +16,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useBirdsStore } from '../../store/birdsStore';
 
 const CONFIDENCE_THRESHOLD = 0.3;
-const CHUNK_MS = 5000;
+const CHUNK_MS = 3000;
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -146,7 +146,7 @@ export default function HomeScreen() {
   function onMeterUpdate(dBFS: number) {
     if (!isListeningRef.current) return;
     // Normalize -50 dBFS..0 → 0..1 (raised floor = more sensitive)
-    const level = Math.min(1, Math.max(0, (dBFS + 50) / 50) * 2);
+    const level = Math.min(1, Math.max(0, (dBFS + 65) / 40) * 2);
     const now = Date.now();
     const cooldown = Math.max(80, 150 - level * 70);
     if (level > 0.001 && now - lastWaveTime.current > cooldown) {

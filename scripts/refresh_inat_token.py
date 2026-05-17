@@ -26,26 +26,47 @@ INAT_SIGNIN_URL    = "https://www.inaturalist.org/users/sign_in"
 INAT_API_TOKEN_URL = "https://www.inaturalist.org/users/api_token"
 
 
+BROWSER_HEADERS = {
+    "User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+    "Accept":          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+
 def get_inat_jwt(username: str, password: str) -> str:
-    with httpx.Client(follow_redirects=True, timeout=30) as client:
+    with httpx.Client(follow_redirects=True, timeout=30, headers=BROWSER_HEADERS) as client:
         r = client.get(INAT_LOGIN_URL)
         r.raise_for_status()
 
-        match = re.search(r'name="authenticity_token"\s+value="([^"]+)"', r.text)
+        # Try input field first, fall back to meta tag
+        match = (
+            re.search(r'name="authenticity_token"[^>]*value="([^"]+)"', r.text)
+            or re.search(r'value="([^"]+)"[^>]*name="authenticity_token"', r.text)
+            or re.search(r'<meta[^>]+name="csrf-token"[^>]+content="([^"]+)"', r.text)
+        )
         if not match:
             raise RuntimeError("Could not find CSRF token on iNaturalist login page")
         csrf = match.group(1)
 
-        r = client.post(INAT_SIGNIN_URL, data={
-            "authenticity_token": csrf,
-            "user[login]":        username,
-            "user[password]":     password,
-            "commit":             "Log in",
-        })
+        r = client.post(
+            INAT_SIGNIN_URL,
+            data={
+                "utf8":               "✓",
+                "authenticity_token": csrf,
+                "user[login]":        username,
+                "user[password]":     password,
+                "commit":             "Log in",
+            },
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Referer":      INAT_LOGIN_URL,
+                "Origin":       "https://www.inaturalist.org",
+            },
+        )
         r.raise_for_status()
 
         if "/login" in str(r.url):
-            raise RuntimeError("iNaturalist login failed — check credentials")
+            raise RuntimeError("iNaturalist login failed — check INAT_USERNAME / INAT_PASSWORD secrets")
 
         r = client.get(INAT_API_TOKEN_URL, headers={"Accept": "application/json"})
         r.raise_for_status()
