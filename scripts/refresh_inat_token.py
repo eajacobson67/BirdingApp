@@ -37,7 +37,6 @@ def get_inat_jwt(username: str, password: str) -> str:
         page = ctx.new_page()
 
         page.goto(INAT_LOGIN_URL, wait_until="domcontentloaded", timeout=30000)
-        page.screenshot(path="/tmp/inat_login.png")
 
         login_selector    = "input[placeholder='Username or email']"
         password_selector = "input[placeholder='Password']"
@@ -50,7 +49,6 @@ def get_inat_jwt(username: str, password: str) -> str:
         try:
             page.wait_for_url(lambda url: "/login" not in url, timeout=15000)
         except Exception:
-            page.screenshot(path="/tmp/inat_after_login.png")
             raise RuntimeError("iNaturalist login failed — check INAT_USERNAME / INAT_PASSWORD secrets")
 
         response = ctx.request.get(
