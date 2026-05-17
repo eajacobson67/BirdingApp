@@ -21,7 +21,7 @@ export default function ConfirmSightingScreen() {
   const c = useColors();
   const { user } = useAuthStore();
   const { birds, location } = useBirdsStore();
-  const { commonName, scientificName } = useLocalSearchParams<{ commonName: string; scientificName: string }>();
+  const { commonName, scientificName, photoUri } = useLocalSearchParams<{ commonName: string; scientificName: string; photoUri?: string }>();
 
   const [notes, setNotes] = useState('');
   const [photoURI, setPhotoURI] = useState<string | null>(null);
@@ -32,6 +32,10 @@ export default function ConfirmSightingScreen() {
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => { router.back(); return true; });
     return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (photoUri) uploadPhoto(photoUri);
   }, []);
 
   const bird = birds.find(b => b.commonName === commonName);

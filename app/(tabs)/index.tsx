@@ -87,6 +87,7 @@ export default function HomeScreen() {
   const [cameraMode, setCameraMode]         = useState(false);
   const [galleryPhotos, setGalleryPhotos]   = useState<MediaLibrary.Asset[]>([]);
   const [selectedPhoto, setSelectedPhoto]   = useState<string | null>(null);
+  const [submittedPhotoUri, setSubmittedPhotoUri] = useState<string | null>(null);
   const [cameraResults, setCameraResults]   = useState<BirdVisionResult[]>([]);
   const [cameraLoading, setCameraLoading]   = useState(false);
   const [clusterBottom, setClusterBottom]   = useState(SCREEN_H * 0.65);
@@ -272,6 +273,7 @@ export default function HomeScreen() {
   }
 
   async function submitImageForRecognition(uri: string) {
+    setSubmittedPhotoUri(uri);
     setCameraLoading(true);
     setCameraResults([]);
     try {
@@ -628,7 +630,7 @@ export default function HomeScreen() {
                     <TouchableOpacity
                       key={i}
                       style={[styles.resultRow, { backgroundColor: c.surface, borderColor: t.border }]}
-                      onPress={() => router.push({ pathname: '/log/confirm', params: { commonName: r.commonName, scientificName: r.scientificName } })}
+                      onPress={() => router.push({ pathname: '/log/confirm', params: { commonName: r.commonName, scientificName: r.scientificName, photoUri: submittedPhotoUri ?? '' } })}
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.resultName, { color: c.textPrimary, flex: 1 }]}>{r.commonName}</Text>
