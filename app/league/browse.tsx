@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert, BackHandler,
@@ -139,18 +139,18 @@ export default function BrowseLeaguesScreen() {
 
 const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
-  title: { fontSize: 18, fontWeight: '800' },
+  title: { fontSize: 18, fontFamily: 'Nunito_800ExtraBold' },
   tabs: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 12, borderRadius: 12, padding: 4, borderWidth: 1 },
   tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
-  tabText: { fontSize: 13, fontWeight: '600' },
+  tabText: { fontSize: 13, fontFamily: 'Nunito_600SemiBold' },
   card: { borderRadius: 14, borderWidth: 1, padding: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  leagueName: { fontSize: 16, fontWeight: '700' },
+  leagueName: { fontSize: 16, fontFamily: 'Nunito_700Bold' },
   description: { fontSize: 13, marginTop: 3 },
   meta: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4, flexWrap: 'wrap' },
   metaText: { fontSize: 13 },
   chip: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, marginLeft: 6 },
-  chipText: { fontSize: 11, fontWeight: '700' },
+  chipText: { fontSize: 11, fontFamily: 'Nunito_700Bold' },
   joinBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
-  joinBtnText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
+  joinBtnText: { fontSize: 13, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF' },
   empty: { textAlign: 'center', marginTop: 60, fontSize: 15 },
 });

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+﻿import { useEffect, useRef } from 'react';
 import { View, Text, Modal, Animated, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { BirdAvatar } from '../ui/BirdAvatar';
 import { BIRD_STYLES } from '../../lib/birdStyles';
@@ -117,18 +117,18 @@ export function AwardCeremony({ visible, onClose, members, myUserId }: Props) {
 const s = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.88)', justifyContent: 'flex-end' },
   container: { backgroundColor: '#1A1A2E', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 24, paddingHorizontal: 24, paddingBottom: 40 },
-  header: { color: '#E8C84A', fontSize: 22, fontWeight: '800', textAlign: 'center', marginBottom: 4 },
-  personalMsg: { color: '#FFFFFF', fontSize: 16, fontWeight: '600', textAlign: 'center', marginBottom: 24 },
+  header: { color: '#E8C84A', fontSize: 22, fontFamily: 'Nunito_800ExtraBold', textAlign: 'center', marginBottom: 4 },
+  personalMsg: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Nunito_600SemiBold', textAlign: 'center', marginBottom: 24 },
   podiumRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 0, marginBottom: 24 },
   podiumSlot: { flex: 1, alignItems: 'center' },
-  memberName: { color: '#FFFFFF', fontSize: 11, fontWeight: '600', marginTop: 4, marginBottom: 2, textAlign: 'center' },
-  memberPts: { fontSize: 11, fontWeight: '700', marginBottom: 6 },
+  memberName: { color: '#FFFFFF', fontSize: 11, fontFamily: 'Nunito_600SemiBold', marginTop: 4, marginBottom: 2, textAlign: 'center' },
+  memberPts: { fontSize: 11, fontFamily: 'Nunito_700Bold', marginBottom: 6 },
   podiumBlock: { width: '90%', borderTopLeftRadius: 8, borderTopRightRadius: 8, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 6 },
   rankNum: { fontSize: 22 },
   restRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#FFFFFF15' },
-  restRank: { color: '#8BA3B0', width: 36, fontSize: 13, fontWeight: '700' },
+  restRank: { color: '#8BA3B0', width: 36, fontSize: 13, fontFamily: 'Nunito_700Bold' },
   restName: { flex: 1, color: '#FFFFFF', fontSize: 14 },
-  restPts: { color: '#8BA3B0', fontSize: 13, fontWeight: '600' },
+  restPts: { color: '#8BA3B0', fontSize: 13, fontFamily: 'Nunito_600SemiBold' },
   closeBtn: { marginTop: 24, backgroundColor: '#E8C84A', borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
-  closeBtnText: { color: '#1A1A2E', fontSize: 16, fontWeight: '800' },
+  closeBtnText: { color: '#1A1A2E', fontSize: 16, fontFamily: 'Nunito_800ExtraBold' },
 });

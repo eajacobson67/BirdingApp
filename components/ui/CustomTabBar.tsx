@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+﻿import { useRef, useEffect } from 'react';
 import { View, Pressable, Animated } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useThemeStore } from '../../store/themeStore';
@@ -26,6 +26,7 @@ const LABELS: Record<string, string> = {
   leaderboard: 'Ranks',
   profile:     'Me',
 };
+
 
 export function CustomTabBar({ state, navigation, insets }: BottomTabBarProps) {
   const { birdStyle } = useThemeStore();
@@ -127,8 +128,11 @@ export function CustomTabBar({ state, navigation, insets }: BottomTabBarProps) {
               <Animated.Text style={{
                 position: 'absolute',
                 bottom: 5,
+                left: 0,
+                right: 0,
+                textAlign: 'center',
                 fontSize: 10,
-                fontWeight: '600',
+                fontFamily: 'Nunito_600SemiBold',
                 color: t.gray,
                 opacity: labelOpacity,
               }}>

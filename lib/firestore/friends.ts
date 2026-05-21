@@ -80,8 +80,6 @@ export async function getConnectionStatus(
 export async function getFriendsLeaderboard(uid: string): Promise<UserProfile[]> {
   const ids = await getFriendIds(uid);
   if (ids.length === 0) return [];
-  const profiles = await Promise.all(ids.map((id) => getUserProfile(id)));
-  return (profiles.filter(Boolean) as UserProfile[]).sort(
-    (a, b) => b.totalSpecies - a.totalSpecies,
-  );
+  const profiles = await Promise.all(ids.map(id => getUserProfile(id)));
+  return (profiles.filter(Boolean) as UserProfile[]).sort((a, b) => b.totalSpecies - a.totalSpecies);
 }

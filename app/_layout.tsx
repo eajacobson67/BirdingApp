@@ -27,9 +27,10 @@ export default function RootLayout() {
   const { user, loading, setIsAdmin } = useAuthStore();
   const fetchBirds = useBirdsStore((s) => s.fetchBirds);
   const setBirdStyle = useThemeStore((s) => s.setBirdStyle);
+  const themeHydrated = useThemeStore((s) => s._hasHydrated);
 
   useEffect(() => {
-    if (!fontsLoaded || loading) return;
+    if (!fontsLoaded || loading || !themeHydrated) return;
     const t = setTimeout(() => {
       if (!user) {
         router.replace('/(auth)/login');
@@ -46,6 +47,8 @@ export default function RootLayout() {
     }, 0);
     return () => clearTimeout(t);
   }, [user, loading, fontsLoaded]);
+
+  if (!fontsLoaded || !themeHydrated) return null;
 
   return (
     <>
@@ -71,11 +74,11 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="sighting/[id]"
-          options={{ headerShown: true, title: 'Sighting' }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="user/[id]"
-          options={{ headerShown: true, title: 'Profile' }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="league/create"
@@ -91,6 +94,10 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="league/[id]/invite"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="admin"
           options={{ headerShown: false }}
         />
       </Stack>

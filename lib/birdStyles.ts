@@ -70,4 +70,22 @@ export const BIRD_STYLES: BirdStyle[] = [
       surface: '#FFFFFF', border: '#DED0BC', gray: '#9E9089', danger: '#8C3A2A',
     },
   },
+  {
+    id: 'scissortailedflycatcher',
+    label: 'Scissor-tailed Flycatcher',
+    body: '#4B6E8A',
+    theme: {
+      primary: '#4B6E8A', accent: '#D98A6F', background: '#EFF3F6',
+      surface: '#FFFFFF', border: '#BCC8D2', gray: '#8A9299', danger: '#2D3035',
+    },
+  },
+  {
+    id: 'bluejay',
+    label: 'Blue Jay',
+    body: '#3A7BD5',
+    theme: {
+      primary: '#3A7BD5', accent: '#1A5BAF', background: '#EEF4FC',
+      surface: '#FFFFFF', border: '#AECBEE', gray: '#8A8FA0', danger: '#1A2A4A',
+    },
+  },
 ];

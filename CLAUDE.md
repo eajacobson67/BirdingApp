@@ -40,7 +40,7 @@ These rules come directly from the user and must be followed:
 |---|---|---|
 | `waxwing` | Cedar Waxwing | Brown, gray wings, red tips, black band mask, yellow belly, crest |
 | `cardinal` | Northern Cardinal | Red, tall pointy crest, black bib |
-| `bluejay` | Blue Jay | Blue, blue crest, white tips, black band at neck |
+| `bluejay` | Blue Jay | Vivid blue body/crest, white face, large round eyes with white ring, gray throat patch, light blue beak, dark navy wing shadow |
 | `robin` | American Robin | Dark gray, orange belly, black band |
 | `goldfinch` | American Goldfinch | Yellow, black cap, black wings + white tips |
 | `incatern` | Inca Tern | Charcoal, white tips, **curly white mustache plumes (Bezier)**, red eye |
@@ -49,6 +49,8 @@ These rules come directly from the user and must be followed:
 | `titmouse` | Tufted Titmouse | Blue-gray, pointy crest, black forehead cap |
 | `hummingbird` | Ruby-Throat Hummingbird | Green, red gorget bib, white belly |
 | `owl` | Great Horned Owl | Brown, ear tufts, **two forward-facing golden eyes** |
+| `housesparrow` | House Sparrow | Warm brown, gray crown, streaked wings |
+| `scissortailedflycatcher` | Scissor-tailed Flycatcher | Light gray body, steel-blue chest, salmon flanks, long forked tail |
 
 ---
 

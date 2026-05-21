@@ -98,11 +98,11 @@ export default function InviteScreen() {
 
 const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
-  title: { fontSize: 18, fontWeight: '800' },
+  title: { fontSize: 18, fontFamily: 'Nunito_800ExtraBold' },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1 },
-  name: { fontSize: 15, fontWeight: '700' },
+  name: { fontSize: 15, fontFamily: 'Nunito_700Bold' },
   username: { fontSize: 13, marginTop: 1 },
   inviteBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 },
-  inviteBtnText: { fontSize: 13, fontWeight: '700' },
+  inviteBtnText: { fontSize: 13, fontFamily: 'Nunito_700Bold' },
   empty: { textAlign: 'center', marginTop: 60, fontSize: 15 },
 });

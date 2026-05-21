@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+﻿import { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Modal, TextInput, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
@@ -160,7 +160,7 @@ export default function AudioScreen() {
           <View style={[s.sheet, { backgroundColor: c.surface }]}>
             <Text style={[s.sheetTitle, { color: c.textPrimary }]}>{selected?.commonName}</Text>
             <Text style={[s.sheetSci, { color: c.gray }]}>{selected?.scientificName}</Text>
-            {location && <Text style={{ fontSize: 14, color: c.gray }}>📍 {location.locationName}</Text>}
+            {location && <Text style={{ fontSize: 14, color: c.gray }}>Near {location.locationName}</Text>}
             <TextInput style={[s.notesInput, { backgroundColor: c.background, color: c.textPrimary, borderColor: c.border }]} placeholder="Notes (optional)..." placeholderTextColor={c.gray} multiline value={notes} onChangeText={setNotes} />
             <TouchableOpacity style={[s.submitBtn, { backgroundColor: c.accent }]} onPress={submitSighting} disabled={submitting}>
               {submitting ? <ActivityIndicator color={c.black} /> : <Text style={[s.submitBtnText, { color: c.black }]}>Log Sighting ✓</Text>}
@@ -177,35 +177,35 @@ export default function AudioScreen() {
 
 const s = StyleSheet.create({
   content: { padding: 24, alignItems: 'center', gap: 20 },
-  title: { fontSize: 22, fontWeight: '800' },
+  title: { fontSize: 22, fontFamily: 'Nunito_800ExtraBold' },
   subtitle: { fontSize: 14, textAlign: 'center' },
   visualizer: { width: 160, height: 160, borderRadius: 80, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginVertical: 16 },
   idleIcon: { fontSize: 64 },
   recordingIndicator: { alignItems: 'center', gap: 8 },
   redDot: { width: 16, height: 16, borderRadius: 8 },
-  recordingText: { fontWeight: '700', fontSize: 14 },
+  recordingText: { fontFamily: 'Nunito_700Bold', fontSize: 14 },
   recordBtn: { borderRadius: 14, paddingVertical: 16, paddingHorizontal: 40, alignItems: 'center' },
-  recordBtnText: { fontSize: 16, fontWeight: '700' },
+  recordBtnText: { fontSize: 16, fontFamily: 'Nunito_700Bold' },
   results: { width: '100%', gap: 10 },
-  resultsTitle: { fontSize: 18, fontWeight: '700', marginBottom: 4 },
+  resultsTitle: { fontSize: 18, fontFamily: 'Nunito_700Bold', marginBottom: 4 },
   resultRow: { borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1 },
   resultMeta: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  resultRank: { fontSize: 18, fontWeight: '800', width: 28 },
-  resultName: { fontSize: 16, fontWeight: '600' },
+  resultRank: { fontSize: 18, fontFamily: 'Nunito_800ExtraBold', width: 28 },
+  resultName: { fontSize: 16, fontFamily: 'Nunito_600SemiBold' },
   resultSci: { fontSize: 12, fontStyle: 'italic' },
   pill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
-  pillText: { fontSize: 13, fontWeight: '700' },
+  pillText: { fontSize: 13, fontFamily: 'Nunito_700Bold' },
   retryBtn: { alignItems: 'center', paddingVertical: 8 },
   noResults: { alignItems: 'center', gap: 12 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 12 },
-  sheetTitle: { fontSize: 22, fontWeight: '800' },
+  sheetTitle: { fontSize: 22, fontFamily: 'Nunito_800ExtraBold' },
   sheetSci: { fontSize: 14, fontStyle: 'italic' },
   notesInput: { borderRadius: 10, padding: 12, fontSize: 15, borderWidth: 1, minHeight: 80, textAlignVertical: 'top' },
   submitBtn: { borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
-  submitBtnText: { fontSize: 16, fontWeight: '700' },
+  submitBtnText: { fontSize: 16, fontFamily: 'Nunito_700Bold' },
   apiErrorBox: { alignItems: 'center', gap: 12, paddingHorizontal: 16 },
   apiErrorText: { textAlign: 'center', fontSize: 14, lineHeight: 20 },
   manualBtn: { borderRadius: 12, paddingVertical: 14, paddingHorizontal: 28, borderWidth: 1.5 },
-  manualBtnText: { fontSize: 15, fontWeight: '700' },
+  manualBtnText: { fontSize: 15, fontFamily: 'Nunito_700Bold' },
 });

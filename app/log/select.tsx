@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Image, BackHandler,
+  StyleSheet, ActivityIndicator, Image, BackHandler, ViewToken,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -18,14 +18,15 @@ export default function SelectBirdScreen() {
   const { prefill } = useLocalSearchParams<{ prefill?: string }>();
 
   const [search, setSearch] = useState('');
+  const [filtered, setFiltered] = useState<CommonBird[]>([]);
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const [allSpecies, setAllSpecies] = useState<CommonBird[] | null>(null);
+  const fetchingRef = useRef(new Set<string>());
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => { router.back(); return true; });
     return () => sub.remove();
   }, []);
-  const [filtered, setFiltered] = useState<CommonBird[]>([]);
-  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
-  const [allSpecies, setAllSpecies] = useState<CommonBird[] | null>(null);
 
   const maxVal = Math.max(...birds.map(b => b.abundance ?? b.observationCount ?? 0), 1);
 
@@ -47,16 +48,17 @@ export default function SelectBirdScreen() {
     setThumbnails(initial);
   }, [birds]);
 
-  useEffect(() => {
-    const missing = filtered
-      .filter(b => !b.photoUrl && !thumbnails[b.commonName])
-      .slice(0, 15)
-      .map(b => b.commonName);
-    if (!missing.length) return;
-    fetchBirdThumbnails(missing)
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    const toFetch = (viewableItems.map(v => v.item as CommonBird))
+      .filter(b => !b.photoUrl && !fetchingRef.current.has(b.commonName));
+    if (!toFetch.length) return;
+    toFetch.forEach(b => fetchingRef.current.add(b.commonName));
+    fetchBirdThumbnails(toFetch.map(b => b.commonName))
       .then(t => setThumbnails(prev => ({ ...prev, ...t })))
       .catch(() => {});
-  }, [filtered]); // eslint-disable-line react-hooks/exhaustive-deps
+  }).current;
+
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10 }).current;
 
   useEffect(() => {
     if (!search.trim()) { setFiltered(birds); return; }
@@ -103,7 +105,7 @@ export default function SelectBirdScreen() {
       />
 
       {location && (
-        <Text style={[s.locationLabel, { color: c.gray }]}>📍 {location.locationName || 'Your location'}</Text>
+        <Text style={[s.locationLabel, { color: c.gray }]}>Near {location.locationName || 'your location'}</Text>
       )}
 
       {loadingBirds ? (
@@ -112,6 +114,10 @@ export default function SelectBirdScreen() {
         <FlatList
           data={filtered}
           keyExtractor={item => item.commonName}
+          initialNumToRender={15}
+          windowSize={5}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
           renderItem={({ item }) => {
             const val = item.abundance ?? item.observationCount;
             const rarity = val !== undefined
@@ -159,7 +165,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1,
   },
   backBtn: { width: 40, alignItems: 'flex-start' },
-  headerTitle: { fontSize: 17, fontWeight: '700' },
+  headerTitle: { fontSize: 17, fontFamily: 'Nunito_700Bold' },
   search: {
     margin: 16, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12,
     fontSize: 16, borderWidth: 1,
@@ -172,10 +178,10 @@ const s = StyleSheet.create({
   thumb: { width: 44, height: 44, borderRadius: 8 },
   thumbPlaceholder: { width: 44, height: 44, borderRadius: 8 },
   birdInfo: { flex: 1 },
-  commonName: { fontSize: 16, fontWeight: '600' },
+  commonName: { fontSize: 16, fontFamily: 'Nunito_600SemiBold' },
   sciName: { fontSize: 13, fontStyle: 'italic', marginTop: 2 },
   arrow: { fontSize: 20 },
   empty: { textAlign: 'center', marginTop: 48, fontSize: 15 },
   rarityPill: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
-  rarityText: { fontSize: 11, fontWeight: '700' },
+  rarityText: { fontSize: 11, fontFamily: 'Nunito_700Bold' },
 });

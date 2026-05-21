@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Modal, View, Text, TextInput, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useColors } from '../../store/themeStore';
 import { getNearbyCommonBirds, CommonBird } from '../../lib/commonBirds';
@@ -39,7 +39,7 @@ export default function SelectBirdModal({ visible, onSelect, onClose }: Props) {
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={{ flex: 1, backgroundColor: c.background }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingTop: 28 }}>
-          <Text style={{ fontSize: 20, fontWeight: '800', color: c.textPrimary }}>Select Species</Text>
+          <Text style={{ fontSize: 20, fontFamily: 'Nunito_800ExtraBold', color: c.textPrimary }}>Select Species</Text>
           <TouchableOpacity onPress={onClose}>
             <Text style={{ fontSize: 20, color: c.gray, padding: 4 }}>✕</Text>
           </TouchableOpacity>
@@ -73,13 +73,13 @@ export default function SelectBirdModal({ visible, onSelect, onClose }: Props) {
                   activeOpacity={0.7}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '600', color: c.textPrimary, flex: 1 }}>{item.commonName}</Text>
+                    <Text style={{ fontSize: 16, fontFamily: 'Nunito_600SemiBold', color: c.textPrimary, flex: 1 }}>{item.commonName}</Text>
                     <View style={{
                       backgroundColor: rarityColor + '22',
                       borderWidth: 1, borderColor: rarityColor,
                       borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
                     }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: rarityColor }}>{RARITY_LABELS[rarity]}</Text>
+                      <Text style={{ fontSize: 11, fontFamily: 'Nunito_700Bold', color: rarityColor }}>{RARITY_LABELS[rarity]}</Text>
                     </View>
                   </View>
                   <Text style={{ fontSize: 13, color: c.gray, fontStyle: 'italic', marginTop: 2 }}>{item.scientificName}</Text>

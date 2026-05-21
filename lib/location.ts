@@ -17,7 +17,22 @@ export async function getCurrentLocation(): Promise<{ lat: number; lng: number }
   const granted = await requestLocationPermission();
   if (!granted) return null;
   try {
-    const pos = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Balanced });
+    const pos = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Low });
+    return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  } catch {
+    return null;
+  }
+}
+
+// Returns the last cached GPS fix instantly, or falls back to network-only.
+// Good enough for leaderboard proximity — don't need a fresh GPS lock.
+export async function getFastLocation(): Promise<{ lat: number; lng: number } | null> {
+  const granted = await requestLocationPermission();
+  if (!granted) return null;
+  try {
+    const last = await ExpoLocation.getLastKnownPositionAsync();
+    if (last) return { lat: last.coords.latitude, lng: last.coords.longitude };
+    const pos = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Low });
     return { lat: pos.coords.latitude, lng: pos.coords.longitude };
   } catch {
     return null;

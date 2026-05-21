@@ -1,4 +1,4 @@
-import { View, Text } from 'react-native';
+﻿import { View, Text } from 'react-native';
 import { useColors } from '../../store/themeStore';
 
 interface Props {
@@ -18,11 +18,11 @@ export function StatCard({ label, value, accent }: Props) {
       borderWidth: 1,
       borderColor: accent ? c.accent : c.border,
     }}>
-      <Text style={{ fontSize: 24, fontWeight: '800', color: accent ? c.black : c.textPrimary }}>
+      <Text style={{ fontSize: 24, fontFamily: 'Nunito_800ExtraBold', color: accent ? '#FFFFFF' : c.textPrimary }}>
         {value}
       </Text>
       <Text style={{
-        fontSize: 11, color: accent ? c.black : c.gray,
+        fontSize: 11, color: accent ? '#FFFFFF' : c.gray,
         marginTop: 4, textAlign: 'center',
         textTransform: 'uppercase', letterSpacing: 0.5,
         opacity: accent ? 0.75 : 1,

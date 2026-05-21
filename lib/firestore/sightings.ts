@@ -60,6 +60,11 @@ export async function logSighting(data: {
   return ref.id;
 }
 
+function extractCoords(location: unknown): { lat: number; lng: number } {
+  const loc = location as Record<string, number>;
+  return { lat: loc.latitude ?? loc.lat, lng: loc.longitude ?? loc.lng };
+}
+
 export async function getSighting(id: string): Promise<Sighting | null> {
   const snap = await getDoc(doc(db, 'sightings', id));
   if (!snap.exists()) return null;
@@ -67,7 +72,7 @@ export async function getSighting(id: string): Promise<Sighting | null> {
   return {
     id: snap.id,
     ...d,
-    location: { lat: d.location.latitude, lng: d.location.longitude },
+    location: extractCoords(d.location ?? d),
     timestamp: (d.timestamp as Timestamp).toDate(),
     rarity: d.rarity ?? getRarity(d.commonName),
   } as Sighting;
@@ -86,7 +91,7 @@ export async function getRecentPublicSightings(count = 200): Promise<Sighting[]>
     return {
       id: d.id,
       ...data,
-      location: { lat: data.location.latitude, lng: data.location.longitude },
+      location: extractCoords(data.location ?? data),
       timestamp: (data.timestamp as Timestamp).toDate(),
       rarity: data.rarity ?? getRarity(data.commonName),
     } as Sighting;
@@ -114,7 +119,7 @@ export function subscribeToFriendSightings(
       return {
         id: d.id,
         ...data,
-        location: { lat: data.location.latitude, lng: data.location.longitude },
+        location: extractCoords(data.location ?? data),
         timestamp: (data.timestamp as Timestamp)?.toDate?.() ?? new Date(),
         rarity: data.rarity ?? getRarity(data.commonName),
       } as Sighting;
@@ -136,7 +141,7 @@ export async function getUserSightings(userId: string, count = 100): Promise<Sig
     return {
       id: d.id,
       ...data,
-      location: { lat: data.location.latitude, lng: data.location.longitude },
+      location: extractCoords(data.location ?? data),
       timestamp: (data.timestamp as Timestamp)?.toDate?.() ?? new Date(),
       rarity: data.rarity ?? getRarity(data.commonName),
     } as Sighting;

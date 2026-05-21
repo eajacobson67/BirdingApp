@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -256,5 +256,5 @@ const s = StyleSheet.create({
   },
   btnText:  { fontSize: 16, fontFamily: 'Nunito_700Bold', color: '#fff' },
   link:     { textAlign: 'center', marginTop: 16, fontSize: 14 },
-  linkBold: { fontWeight: '700' },
+  linkBold: { fontFamily: 'Nunito_700Bold' },
 });

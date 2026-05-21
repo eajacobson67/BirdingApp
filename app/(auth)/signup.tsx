@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
   View,
   Text,
@@ -116,10 +116,11 @@ export default function SignupScreen() {
 
         <TextInput
           style={[s.input, { backgroundColor: c.surface, color: c.textPrimary, borderColor: c.border }]}
-          placeholder="Username (e.g. robin_watcher)"
+          placeholder="Username (max 15 chars)"
           placeholderTextColor={c.gray}
           autoCapitalize="none"
           autoCorrect={false}
+          maxLength={15}
           value={username}
           onChangeText={setUsername}
         />
@@ -178,7 +179,7 @@ const s = StyleSheet.create({
     paddingBottom: 48,
     gap: 12,
   },
-  title: { fontSize: 28, fontWeight: '800', marginBottom: 4 },
+  title: { fontSize: 28, fontFamily: 'Nunito_800ExtraBold', marginBottom: 4 },
   subtitle: { fontSize: 14, marginBottom: 12, letterSpacing: 0.5 },
   input: {
     borderRadius: 12,
@@ -216,5 +217,5 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
-  btnText: { fontSize: 16, fontWeight: '700' },
+  btnText: { fontSize: 16, fontFamily: 'Nunito_700Bold' },
 });

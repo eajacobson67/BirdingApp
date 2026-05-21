@@ -8,28 +8,33 @@ const DEFAULT = BIRD_STYLES[0];
 
 interface ThemeState {
   birdStyle: BirdStyle;
+  _hasHydrated: boolean;
   setBirdStyle: (id: string) => void;
+  setHasHydrated: (v: boolean) => void;
 }
 
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
       birdStyle: DEFAULT,
+      _hasHydrated: false,
       setBirdStyle: (id: string) => {
         const style = BIRD_STYLES.find((b) => b.id === id) ?? DEFAULT;
         set({ birdStyle: style });
       },
+      setHasHydrated: (v: boolean) => set({ _hasHydrated: v }),
     }),
     {
       name: 'bird-theme',
       storage: createJSONStorage(() => AsyncStorage),
-      // Only persist the ID — BirdStyle objects contain functions/refs that don't serialize
       partialize: (state) => ({ birdStyleId: state.birdStyle.id }),
-      // On rehydration, convert the stored ID back into the full BirdStyle object
       merge: (persisted, current) => {
         const id = (persisted as { birdStyleId?: string }).birdStyleId;
         const style = id ? (BIRD_STYLES.find((b) => b.id === id) ?? DEFAULT) : DEFAULT;
         return { ...current, birdStyle: style };
+      },
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
       },
     },
   ),

@@ -1,10 +1,16 @@
-import { View, Text, Image, ImageSourcePropType } from 'react-native';
+import { View, Image, ImageSourcePropType } from 'react-native';
 import { useColors } from '../../store/themeStore';
 
+const PLACEHOLDER = require('../../assets/buttons/placeholder_bird.png');
+
 const BIRD_PNGS: Partial<Record<string, ImageSourcePropType>> = {
-  waxwing:  require('../../assets/birds/cedar_waxwing.png'),
-  cardinal: require('../../assets/birds/cardinal.png'),
-  robin:    require('../../assets/birds/robin.png'),
+  waxwing:                 require('../../assets/birds/cedar_waxwing.png'),
+  cardinal:                require('../../assets/birds/cardinal.png'),
+  robin:                   require('../../assets/birds/robin.png'),
+  hummingbird:             require('../../assets/birds/hummingbird.png'),
+  paintedbunting:          require('../../assets/birds/painted_bunting.png'),
+  housesparrow:            require('../../assets/birds/house_sparrow.png'),
+  scissortailedflycatcher: require('../../assets/birds/scissor_tailed_flycatcher.png'),
 };
 
 interface Props {
@@ -34,14 +40,5 @@ export function Avatar({ photoURL, birdStyleId, size = 44 }: Props) {
     return <Image source={pngSource} style={{ width: size, height: size }} resizeMode="contain" />;
   }
 
-  return (
-    <View style={{
-      width: size, height: size, borderRadius: size / 2,
-      backgroundColor: c.background,
-      borderWidth: 1.5, borderColor: c.border,
-      alignItems: 'center', justifyContent: 'center',
-    }}>
-      <Text style={{ fontSize: size * 0.5 }}>🐦</Text>
-    </View>
-  );
+  return <Image source={PLACEHOLDER} style={{ width: size, height: size }} resizeMode="contain" />;
 }

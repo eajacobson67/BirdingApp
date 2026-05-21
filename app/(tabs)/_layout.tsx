@@ -6,11 +6,13 @@ export default function TabsLayout() {
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
+      initialRouteName="index"
+      backBehavior="initialRoute"
     >
-      <Tabs.Screen name="map" />
+      <Tabs.Screen name="leaderboard" />
       <Tabs.Screen name="league" />
       <Tabs.Screen name="index" />
-      <Tabs.Screen name="leaderboard" />
+      <Tabs.Screen name="map" />
       <Tabs.Screen name="profile" />
     </Tabs>
   );

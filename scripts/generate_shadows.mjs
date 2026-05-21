@@ -7,16 +7,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BLUR_SIGMA = 1.5;
 
 const birds = [
-  ['waxwing',        'cedar_waxwing.png'],
-  ['cardinal',       'cardinal.png'],
-  ['robin',          'robin.png'],
-  ['hummingbird',    'hummingbird.png'],
-  ['paintedbunting', 'painted_bunting.png'],
+  'cedar_waxwing.png',
+  'cardinal.png',
+  'robin.png',
+  'hummingbird.png',
+  'painted_bunting.png',
+  'house_sparrow.png',
+  'scissor_tailed_flycatcher.png',
+  'blue_jay.png',
 ];
 
-const assetsDir = path.join(__dirname, '..', 'assets', 'birds');
+const assetsDir   = path.join(__dirname, '..', 'assets', 'birds');
+const shadowsDir  = path.join(assetsDir, 'shadows');
+if (!fs.existsSync(shadowsDir)) fs.mkdirSync(shadowsDir);
 
-for (const [birdId, filename] of birds) {
+for (const filename of birds) {
   const src = path.join(assetsDir, filename);
   if (!fs.existsSync(src)) {
     console.log(`  skip ${filename} (not found)`);
@@ -32,7 +37,8 @@ for (const [birdId, filename] of birds) {
     data[i] = 0; data[i + 1] = 0; data[i + 2] = 0;
   }
 
-  const out = path.join(assetsDir, `${birdId}_shadow.png`);
+  const stem = filename.replace(/\.png$/i, '');
+  const out = path.join(shadowsDir, `${stem}_shadow.png`);
   await sharp(Buffer.from(data), { raw: { width, height, channels: 4 } })
     .blur(BLUR_SIGMA)
     .png()

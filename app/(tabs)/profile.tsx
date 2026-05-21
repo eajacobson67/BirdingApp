@@ -1,54 +1,79 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
+  TextInput,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
   Modal,
+  BackHandler,
 } from 'react-native';
-import { seedFakeData } from '../../lib/seedData';
 import { BirdAvatar, BIRD_STYLES, BirdStyle } from '../../components/ui/BirdAvatar';
+import { Avatar } from '../../components/ui/Avatar';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useThemeStore, useColors } from '../../store/themeStore';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useAuthStore } from '../../store/authStore';
 import { getUserProfile, UserProfile } from '../../lib/firestore/users';
 import { getUserSightings, Sighting } from '../../lib/firestore/sightings';
+import { getFriendsLeaderboard } from '../../lib/firestore/friends';
+import { getUserLeaguePlacements } from '../../lib/firestore/leagues';
 import { StatCard } from '../../components/ui/StatCard';
 import { BadgeIcon, BADGES } from '../../components/ui/BadgeIcon';
+import { SightingCard } from '../../components/ui/SightingCard';
 
 export default function ProfileScreen() {
   const c = useColors();
-  const { user, isAdmin } = useAuthStore();
+  const insets = useSafeAreaInsets();
+  const { user } = useAuthStore();
   const setBirdStyle = useThemeStore((s) => s.setBirdStyle);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [sightings, setSightings] = useState<Sighting[]>([]);
+  const [friends, setFriends] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [lifeListExpanded, setLifeListExpanded] = useState(false);
+  const [friendsExpanded, setFriendsExpanded] = useState(false);
+  const [sightingsExpanded, setSightingsExpanded] = useState(false);
+  const [leaguePlacements, setLeaguePlacements] = useState<{ total: number; first: number; second: number; third: number } | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [birdStyleId, setBirdStyleId] = useState('waxwing');
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState('');
 
   const year = new Date().getFullYear().toString();
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([getUserProfile(user.uid), getUserSightings(user.uid, 100)])
-      .then(([p, s]) => {
-        setProfile(p);
-        setSightings(s);
-        if ((p as unknown as Record<string, string>)?.birdStyleId) {
-          setBirdStyleId((p as unknown as Record<string, string>).birdStyleId);
-        }
-      })
-      .finally(() => setLoading(false));
+    getUserLeaguePlacements(user.uid).then(setLeaguePlacements).catch(() => {});
+    Promise.all([
+      getUserProfile(user.uid),
+      getUserSightings(user.uid, 200),
+      getFriendsLeaderboard(user.uid),
+    ]).then(([p, s, f]) => {
+      setProfile(p);
+      setSightings(s);
+      setFriends(f);
+      if ((p as unknown as Record<string, string>)?.birdStyleId) {
+        setBirdStyleId((p as unknown as Record<string, string>).birdStyleId);
+      }
+    }).finally(() => setLoading(false));
   }, [user]);
+
+  useEffect(() => {
+    if (!pickerVisible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setPickerVisible(false);
+      return true;
+    });
+    return () => sub.remove();
+  }, [pickerVisible]);
 
   async function saveBirdStyle(style: BirdStyle) {
     if (!user) return;
@@ -56,6 +81,14 @@ export default function ProfileScreen() {
     setBirdStyle(style.id);
     setPickerVisible(false);
     await updateDoc(doc(db, 'users', user.uid), { birdStyleId: style.id });
+  }
+
+  async function saveDisplayName() {
+    const name = draftName.trim();
+    setEditingName(false);
+    if (!user || !name || name === profile?.displayName) return;
+    setProfile(prev => prev ? { ...prev, displayName: name } : prev);
+    await updateDoc(doc(db, 'users', user.uid), { displayName: name });
   }
 
   async function handleSignOut() {
@@ -67,27 +100,17 @@ export default function ProfileScreen() {
     }
   }
 
-  async function handleSeedData() {
-    if (!user) return;
-    Alert.alert(
-      'Seed Test Data',
-      'This will create 10 fake birder accounts and add 5 of them as your friends. Run once for testing.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Seed',
-          onPress: async () => {
-            try {
-              await seedFakeData(user.uid);
-              Alert.alert('Done!', '10 fake birders added. Check your map, leaderboard, and friends tabs.');
-            } catch (e: unknown) {
-              Alert.alert('Error', (e as Error).message);
-            }
-          },
-        },
-      ],
-    );
-  }
+  const firstSightingIds = useMemo(() => {
+    const map = new Map<string, string>();
+    sightings.forEach(s => map.set(s.commonName, s.id));
+    return new Set(map.values());
+  }, [sightings]);
+
+  const speciesCount = useMemo(() => {
+    const map = new Map<string, number>();
+    sightings.forEach(s => map.set(s.commonName, (map.get(s.commonName) ?? 0) + 1));
+    return map;
+  }, [sightings]);
 
   if (loading) {
     return (
@@ -105,7 +128,7 @@ export default function ProfileScreen() {
     <SafeAreaView style={[s.container, { backgroundColor: c.background }]}>
       <ScrollView contentContainerStyle={{ paddingBottom: 48 }}>
         {/* Header */}
-        <View style={[s.header, { backgroundColor: c.surface, borderBottomColor: c.border }]}>
+        <View style={[s.header, { backgroundColor: c.surface, borderBottomColor: c.border, alignItems: 'center' }]}>
           <TouchableOpacity onPress={() => setPickerVisible(true)}>
             <BirdAvatar
               birdStyle={BIRD_STYLES.find((b) => b.id === birdStyleId) ?? BIRD_STYLES[0]}
@@ -113,11 +136,32 @@ export default function ProfileScreen() {
             />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={[s.displayName, { color: c.textPrimary }]}>{profile?.displayName ?? 'Birder'}</Text>
-            <Text style={[s.username, { color: c.gray }]}>@{profile?.username}</Text>
+            {editingName ? (
+              <TextInput
+                value={draftName}
+                onChangeText={setDraftName}
+                onBlur={saveDisplayName}
+                onSubmitEditing={saveDisplayName}
+                autoFocus
+                maxLength={15}
+                style={[s.displayNameInput, { color: c.textPrimary, borderColor: c.primary }]}
+              />
+            ) : (
+              <TouchableOpacity
+                onPress={() => { setDraftName(profile?.displayName ?? ''); setEditingName(true); }}
+                style={s.nameRow}
+              >
+                <Text style={[s.displayName, { color: c.textPrimary }]}>{profile?.displayName ?? 'Birder'}</Text>
+                <Text style={[s.editHint, { color: c.gray }]}>✎</Text>
+              </TouchableOpacity>
+            )}
+            <Text style={[s.username, { color: c.gray }]} numberOfLines={1}>@{profile?.username}</Text>
             {profile?.bio ? <Text style={[s.bio, { color: c.gray }]}>{profile.bio}</Text> : null}
           </View>
-          <TouchableOpacity onPress={handleSignOut} style={s.signOutBtn}>
+          <TouchableOpacity
+            onPress={handleSignOut}
+            style={[s.signOutBtn, { backgroundColor: c.danger + '18', borderColor: c.danger + '55' }]}
+          >
             <Text style={[s.signOutText, { color: c.danger }]}>Sign out</Text>
           </TouchableOpacity>
         </View>
@@ -125,7 +169,7 @@ export default function ProfileScreen() {
         {/* Bird avatar picker */}
         <Modal visible={pickerVisible} transparent animationType="slide">
           <View style={s.overlay}>
-            <View style={[s.pickerSheet, { backgroundColor: c.surface }]}>
+            <View style={[s.pickerSheet, { backgroundColor: c.surface, paddingBottom: 24 + insets.bottom }]}>
               <Text style={[s.pickerTitle, { color: c.textPrimary }]}>Choose your bird</Text>
               <ScrollView contentContainerStyle={s.pickerGrid} showsVerticalScrollIndicator={false}>
                 {BIRD_STYLES.map((b) => (
@@ -151,14 +195,16 @@ export default function ProfileScreen() {
           <StatCard label="Total Birds" value={profile?.totalSightings ?? 0} />
           <StatCard label="Species" value={profile?.totalSpecies ?? 0} />
           <StatCard label={`${year} Big Year`} value={bigYear} accent />
-          <StatCard label="States" value={profile?.statesVisited?.length ?? 0} />
+          <StatCard label="League 1st" value={leaguePlacements?.first ?? '—'} />
+          <StatCard label="League 2nd" value={leaguePlacements?.second ?? '—'} />
+          <StatCard label="League 3rd" value={leaguePlacements?.third ?? '—'} />
         </View>
 
         {/* Badges */}
         {earnedBadges.length > 0 && (
           <View style={s.section}>
-            <Text style={[s.sectionTitle, { color: c.textPrimary }]}>Badges</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 20 }}>
+            <Text style={[s.sectionTitle, { color: c.textPrimary, marginBottom: 12 }]}>Badges</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
               {earnedBadges.map((b) => (
                 <BadgeIcon key={b.id} badge={b} />
               ))}
@@ -166,119 +212,175 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* Life List */}
-        <View style={s.section}>
-          <TouchableOpacity
-            style={s.sectionHeader}
-            onPress={() => setLifeListExpanded((v) => !v)}
-          >
-            <Text style={[s.sectionTitle, { color: c.textPrimary }]}>Life List ({lifeList.length})</Text>
-            <Text style={[s.expandIcon, { color: c.gray }]}>{lifeListExpanded ? '▲' : '▼'}</Text>
+        {/* Find Friends */}
+        <TouchableOpacity
+          style={[s.findFriendsBtn, { backgroundColor: c.accent }]}
+          onPress={() => router.push('/friends/search')}
+        >
+          <Text style={s.findFriendsBtnText}>+ Find Friends</Text>
+        </TouchableOpacity>
+
+        {/* Friends */}
+        <View style={[s.section, s.card, { backgroundColor: c.surface, borderColor: c.border }]}>
+          <TouchableOpacity style={s.sectionHeader} onPress={() => setFriendsExpanded(v => !v)}>
+            <Text style={[s.sectionTitle, { color: c.textPrimary, marginBottom: 0 }]}>
+              Friends ({friends.length})
+            </Text>
+            <Text style={[s.expandIcon, { color: c.gray }]}>{friendsExpanded ? '▲' : '▼'}</Text>
           </TouchableOpacity>
-          {lifeListExpanded &&
-            lifeList.map((species) => (
-              <Text key={species} style={[s.lifeListItem, { color: c.textPrimary }]}>• {species}</Text>
-            ))}
+          {friendsExpanded && (
+            <View style={[s.expandedContent, { borderTopColor: c.border }]}>
+              {friends.length === 0
+                ? <Text style={[s.empty, { color: c.gray }]}>No friends yet — find some!</Text>
+                : friends.map(f => (
+                    <TouchableOpacity
+                      key={f.uid}
+                      style={[s.friendRow, { borderBottomColor: c.border }]}
+                      onPress={() => router.push(`/user/${f.uid}`)}
+                      activeOpacity={0.7}
+                    >
+                      <Avatar photoURL={f.photoURL} birdStyleId={f.birdStyleId} size={38} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.friendName, { color: c.textPrimary }]}>{f.displayName}</Text>
+                        <Text style={[s.friendUsername, { color: c.gray }]} numberOfLines={1}>@{f.username}</Text>
+                      </View>
+                      <Text style={[s.friendSpecies, { color: c.primary }]}>{f.totalSpecies} sp</Text>
+                    </TouchableOpacity>
+                  ))
+              }
+            </View>
+          )}
         </View>
 
-        {/* Admin: Seed Test Data */}
-        {isAdmin && (
-          <View style={[s.section, { marginTop: 32 }]}>
-            <TouchableOpacity style={[s.seedBtn, { borderColor: c.border }]} onPress={handleSeedData}>
-              <Text style={[s.seedBtnText, { color: c.gray }]}>Seed Test Data</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        {/* Life List */}
+        <View style={[s.section, s.card, { backgroundColor: c.surface, borderColor: c.border }]}>
+          <TouchableOpacity style={s.sectionHeader} onPress={() => setLifeListExpanded(v => !v)}>
+            <Text style={[s.sectionTitle, { color: c.textPrimary, marginBottom: 0 }]}>
+              Life List ({lifeList.length})
+            </Text>
+            <Text style={[s.expandIcon, { color: c.gray }]}>{lifeListExpanded ? '▲' : '▼'}</Text>
+          </TouchableOpacity>
+          {lifeListExpanded && (
+            <View style={[s.expandedContent, { borderTopColor: c.border }]}>
+              <View style={s.lifeListGrid}>
+                {lifeList.map((species) => (
+                  <View key={species} style={[s.lifeListChip, { backgroundColor: c.primary + '12', borderColor: c.border }]}>
+                    <Text style={[s.chipText, { color: c.textPrimary }]} numberOfLines={1}>{species}</Text>
+                    <Text style={[s.chipCount, { color: c.primary }]}>×{speciesCount.get(species) ?? 0}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
 
         {/* Recent Sightings */}
-        <View style={s.section}>
-          <Text style={[s.sectionTitle, { color: c.textPrimary }]}>Recent Sightings</Text>
-          {sightings.slice(0, 10).map((sig) => (
-            <TouchableOpacity
-              key={sig.id}
-              style={[s.sightingRow, { borderBottomColor: c.border }]}
-              onPress={() => router.push(`/sighting/${sig.id}`)}
-            >
-              <View>
-                <Text style={[s.sightingSpecies, { color: c.textPrimary }]}>{sig.commonName}</Text>
-                <Text style={[s.sightingMeta, { color: c.gray }]}>{sig.locationName} · {formatAgo(sig.timestamp)}</Text>
-              </View>
-              <Text style={[s.arrow, { color: c.gray }]}>›</Text>
-            </TouchableOpacity>
-          ))}
+        <View style={[s.section, s.card, { backgroundColor: c.surface, borderColor: c.border }]}>
+          <TouchableOpacity style={s.sectionHeader} onPress={() => setSightingsExpanded(v => !v)}>
+            <Text style={[s.sectionTitle, { color: c.textPrimary, marginBottom: 0 }]}>
+              Recent Sightings ({sightings.length})
+            </Text>
+            <Text style={[s.expandIcon, { color: c.gray }]}>{sightingsExpanded ? '▲' : '▼'}</Text>
+          </TouchableOpacity>
+          {sightingsExpanded && (
+            <View style={[s.expandedContent, { borderTopColor: c.border }]}>
+              {sightings.length === 0 ? (
+                <Text style={[s.empty, { color: c.gray }]}>No sightings yet.</Text>
+              ) : (
+                sightings.slice(0, 10).map((sig) => (
+                  <SightingCard
+                    key={sig.id}
+                    sighting={sig}
+                    isFirst={firstSightingIds.has(sig.id)}
+                    onPress={() => router.push(`/sighting/${sig.id}`)}
+                  />
+                ))
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function formatAgo(date: Date): string {
-  const diff = Date.now() - date.getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
 const s = StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 16,
     padding: 20,
     borderBottomWidth: 1,
   },
-  displayName: { fontSize: 20, fontWeight: '800' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  displayName: { fontSize: 20, fontFamily: 'Nunito_800ExtraBold' },
+  displayNameInput: {
+    fontSize: 20,
+    fontFamily: 'Nunito_800ExtraBold',
+    borderBottomWidth: 2,
+    paddingVertical: 2,
+    paddingHorizontal: 0,
+    marginBottom: 2,
+  },
+  editHint: { fontSize: 16, marginTop: 2 },
   username: { fontSize: 14, marginTop: 2 },
   bio: { fontSize: 13, marginTop: 4, maxWidth: 180 },
-  signOutBtn: { marginLeft: 'auto' },
-  signOutText: { fontSize: 13 },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    padding: 16,
-    flexWrap: 'wrap',
+  signOutBtn: {
+    marginLeft: 'auto',
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
-  section: { marginTop: 16, paddingHorizontal: 20 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 12 },
+  signOutText: { fontSize: 13, fontFamily: 'Nunito_600SemiBold' },
+  statsRow: { flexDirection: 'row', gap: 10, padding: 16, flexWrap: 'wrap' },
+  section: { marginTop: 12, marginHorizontal: 16 },
+  card: { borderRadius: 16, borderWidth: 1, padding: 16, overflow: 'hidden' },
+  findFriendsBtn: {
+    marginHorizontal: 16, marginTop: 12,
+    borderRadius: 12, paddingVertical: 14,
+    alignItems: 'center',
+  },
+  findFriendsBtnText: { fontSize: 15, fontFamily: 'Nunito_700Bold', color: '#FFFFFF' },
+  expandedContent: { marginTop: 12, borderTopWidth: 1, paddingTop: 12 },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sectionTitle: { fontSize: 17, fontFamily: 'Nunito_700Bold', marginBottom: 0 },
   expandIcon: { fontSize: 14 },
-  lifeListItem: { fontSize: 14, paddingVertical: 4 },
-  sightingRow: {
+  friendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  friendName: { fontSize: 14, fontFamily: 'Nunito_700Bold' },
+  friendUsername: { fontSize: 12, marginTop: 1 },
+  friendSpecies: { fontSize: 13, fontFamily: 'Nunito_700Bold' },
+  lifeListGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  lifeListChip: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  sightingSpecies: { fontSize: 15, fontWeight: '600' },
-  sightingMeta: { fontSize: 13, marginTop: 2 },
-  arrow: { fontSize: 20 },
-  seedBtn: {
+    gap: 4,
+    width: '48%',
+    borderRadius: 8,
     borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
-  seedBtnText: { fontSize: 13, fontWeight: '600' },
+  chipText: { fontSize: 13, fontFamily: 'Nunito_600SemiBold', flex: 1 },
+  chipCount: { fontSize: 12, fontFamily: 'Nunito_700Bold' },
+  empty: { fontSize: 14, marginTop: 8 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  pickerSheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '80%',
-  },
-  pickerTitle: { fontSize: 18, fontWeight: '800', marginBottom: 20, textAlign: 'center' },
+  pickerSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '80%' },
+  pickerTitle: { fontSize: 18, fontFamily: 'Nunito_800ExtraBold', marginBottom: 20, textAlign: 'center' },
   pickerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', paddingBottom: 8 },
-  pickerItem: {
-    alignItems: 'center',
-    gap: 6,
-    padding: 10,
-    borderRadius: 14,
-    borderWidth: 2,
-  },
-  pickerLabel: { fontSize: 11, fontWeight: '600', textAlign: 'center', maxWidth: 90 },
+  pickerItem: { alignItems: 'center', gap: 6, padding: 10, borderRadius: 14, borderWidth: 2 },
+  pickerLabel: { fontSize: 11, fontFamily: 'Nunito_600SemiBold', textAlign: 'center', maxWidth: 90 },
   pickerCancel: { textAlign: 'center', paddingVertical: 16, fontSize: 15 },
 });

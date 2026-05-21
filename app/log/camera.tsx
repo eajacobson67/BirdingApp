@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
   View,
   Text,
@@ -141,7 +141,7 @@ export default function CameraScreen() {
           <View style={[s.sheet, { backgroundColor: c.surface }]}>
             <Text style={[s.sheetTitle, { color: c.textPrimary }]}>{selectedBird?.commonName}</Text>
             <Text style={[s.sheetSci, { color: c.gray }]}>{selectedBird?.scientificName}</Text>
-            {location && <Text style={{ fontSize: 14, color: c.gray }}>📍 {location.locationName}</Text>}
+            {location && <Text style={{ fontSize: 14, color: c.gray }}>Near {location.locationName}</Text>}
             <TextInput
               style={[s.notesInput, { backgroundColor: c.background, color: c.textPrimary, borderColor: c.border }]}
               placeholder="Notes (optional)..."
@@ -166,7 +166,7 @@ export default function CameraScreen() {
 const s = StyleSheet.create({
   container: { flex: 1 },
   content: { flex: 1, padding: 24, gap: 16, alignItems: 'center' },
-  title: { fontSize: 22, fontWeight: '800', alignSelf: 'flex-start' },
+  title: { fontSize: 22, fontFamily: 'Nunito_800ExtraBold', alignSelf: 'flex-start' },
   subtitle: { fontSize: 14, alignSelf: 'flex-start' },
   preview: { width: '100%', height: 220, borderRadius: 16, resizeMode: 'cover' },
   placeholder: { width: '100%', height: 220, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
@@ -174,13 +174,13 @@ const s = StyleSheet.create({
   placeholderText: { fontSize: 14 },
   btn: { width: '100%', borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
   btnSecondary: { borderWidth: 1.5 },
-  btnText: { fontSize: 16, fontWeight: '700' },
+  btnText: { fontSize: 16, fontFamily: 'Nunito_700Bold' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 12 },
-  sheetTitle: { fontSize: 22, fontWeight: '800' },
+  sheetTitle: { fontSize: 22, fontFamily: 'Nunito_800ExtraBold' },
   sheetSci: { fontSize: 14, fontStyle: 'italic' },
   notesInput: { borderRadius: 10, padding: 12, fontSize: 15, borderWidth: 1, minHeight: 80, textAlignVertical: 'top' },
   submitBtn: { borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
-  submitBtnText: { fontSize: 16, fontWeight: '700' },
+  submitBtnText: { fontSize: 16, fontFamily: 'Nunito_700Bold' },
   cancelText: { textAlign: 'center', paddingVertical: 8, fontSize: 15 },
 });

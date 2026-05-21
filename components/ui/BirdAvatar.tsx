@@ -12,6 +12,8 @@ const BIRD_PNGS: Partial<Record<string, ImageSourcePropType>> = {
   hummingbird:    require('../../assets/birds/hummingbird.png'),
   paintedbunting: require('../../assets/birds/painted_bunting.png'),
   housesparrow:   require('../../assets/birds/house_sparrow.png'),
+  scissortailedflycatcher: require('../../assets/birds/scissor_tailed_flycatcher.png'),
+  bluejay:      require('../../assets/birds/blue_jay.png'),
 };
 
 interface Props {

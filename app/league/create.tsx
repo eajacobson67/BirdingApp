@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, Switch, ScrollView,
   TouchableOpacity, StyleSheet, Alert, Platform, BackHandler,
@@ -201,18 +201,18 @@ function ToggleRow({
 
 const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
-  title: { fontSize: 18, fontWeight: '800' },
+  title: { fontSize: 18, fontFamily: 'Nunito_800ExtraBold' },
   section: { paddingHorizontal: 20, marginBottom: 20 },
-  label: { fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 8 },
+  label: { fontSize: 11, fontFamily: 'Nunito_700Bold', letterSpacing: 1, marginBottom: 8 },
   input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16 },
   durationRow: { flexDirection: 'row', gap: 10 },
   durationChip: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10, borderWidth: 1 },
-  durationText: { fontSize: 14, fontWeight: '700' },
+  durationText: { fontSize: 14, fontFamily: 'Nunito_700Bold' },
   dateRange: { fontSize: 13, marginTop: 8 },
   card: { borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
   toggleRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
-  toggleLabel: { fontSize: 15, fontWeight: '600' },
+  toggleLabel: { fontSize: 15, fontFamily: 'Nunito_600SemiBold' },
   toggleSub: { fontSize: 12, marginTop: 2 },
   createBtn: { marginHorizontal: 20, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
-  createBtnText: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
+  createBtnText: { fontSize: 16, fontFamily: 'Nunito_800ExtraBold', color: '#FFFFFF' },
 });

@@ -147,11 +147,22 @@ export async function getUserLeagues(uid: string): Promise<League[]> {
   return leagues.filter((l): l is League => l !== null);
 }
 
+export async function getActiveLeagues(): Promise<League[]> {
+  const q = query(
+    collection(db, 'leagues'),
+    where('status', '==', 'active'),
+    orderBy('endDate', 'asc'),
+    limit(50),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => firestoreToLeague(d.id, d.data()));
+}
+
 export async function getPublicLeagues(count = 30): Promise<League[]> {
   const q = query(
     collection(db, 'leagues'),
     where('isPublic', '==', true),
-    where('status', 'in', ['lobby', 'active', 'upcoming']),
+    where('status', 'in', ['lobby', 'upcoming']),
     limit(count),
   );
   const snap = await getDocs(q);
@@ -316,6 +327,22 @@ export async function logLeagueSighting(
   });
 }
 
+export async function getUserLeaguePlacements(uid: string): Promise<{
+  total: number; first: number; second: number; third: number;
+}> {
+  const leagues = await getUserLeagues(uid);
+  const completed = leagues.filter(l => l.status === 'completed');
+  const result = { total: leagues.length, first: 0, second: 0, third: 0 };
+  await Promise.all(completed.map(async l => {
+    const members = await getLeagueLeaderboard(l.id);
+    const rank = members.findIndex(m => m.userId === uid);
+    if (rank === 0) result.first++;
+    else if (rank === 1) result.second++;
+    else if (rank === 2) result.third++;
+  }));
+  return result;
+}
+
 export async function getLeagueLeaderboard(leagueId: string): Promise<LeagueMember[]> {
   const snap = await getDocs(
     query(
@@ -356,6 +383,45 @@ export function subscribeLeagueUpdates(
 ): Unsubscribe {
   return onSnapshot(doc(db, 'leagues', leagueId), (snap) => {
     if (snap.exists()) cb(firestoreToLeague(snap.id, snap.data()));
+  });
+}
+
+export async function getFriendLeagues(friendIds: string[]): Promise<League[]> {
+  if (friendIds.length === 0) return [];
+  const chunks: string[][] = [];
+  for (let i = 0; i < friendIds.length; i += 10) chunks.push(friendIds.slice(i, i + 10));
+  const snaps = await Promise.all(
+    chunks.map((chunk) => getDocs(query(collection(db, 'leagues'), where('createdBy', 'in', chunk)))),
+  );
+  const leagues: League[] = [];
+  for (const snap of snaps) for (const d of snap.docs) leagues.push(firestoreToLeague(d.id, d.data()));
+  return leagues;
+}
+
+export async function getMyLeagueMembership(leagueId: string, uid: string): Promise<LeagueMember | null> {
+  const snap = await getDoc(doc(db, 'leagues', leagueId, 'members', uid));
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  return { ...data, joinedAt: (data.joinedAt as Timestamp)?.toDate?.() ?? new Date() } as LeagueMember;
+}
+
+export async function getLeagueSightings(leagueId: string, count = 50): Promise<LeagueSighting[]> {
+  const snap = await getDocs(
+    query(collection(db, 'leagues', leagueId, 'sightings'), orderBy('timestamp', 'desc'), limit(count)),
+  );
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      sightingId: data.sightingId as string,
+      userId: data.userId as string,
+      species: data.species as string,
+      rarity: data.rarity as import('../birdRarity').Rarity,
+      points: data.points as number,
+      isTargetBird: data.isTargetBird as boolean,
+      timestamp: (data.timestamp as Timestamp)?.toDate?.() ?? new Date(),
+      photoURL: data.photoURL as string | null,
+    };
   });
 }
 

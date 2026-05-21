@@ -12,14 +12,20 @@ const BIRD_PNGS: Partial<Record<string, ImageSourcePropType>> = {
   robin:          require('../../assets/birds/robin.png'),
   hummingbird:    require('../../assets/birds/hummingbird.png'),
   paintedbunting: require('../../assets/birds/painted_bunting.png'),
+  housesparrow:   require('../../assets/birds/house_sparrow.png'),
+  scissortailedflycatcher: require('../../assets/birds/scissor_tailed_flycatcher.png'),
+  bluejay:      require('../../assets/birds/blue_jay.png'),
 };
 
 const BIRD_SHADOWS: Partial<Record<string, ImageSourcePropType>> = {
-  waxwing:        require('../../assets/birds/waxwing_shadow.png'),
-  cardinal:       require('../../assets/birds/cardinal_shadow.png'),
-  robin:          require('../../assets/birds/robin_shadow.png'),
-  hummingbird:    require('../../assets/birds/hummingbird_shadow.png'),
-  paintedbunting: require('../../assets/birds/paintedbunting_shadow.png'),
+  waxwing:        require('../../assets/birds/shadows/cedar_waxwing_shadow.png'),
+  cardinal:       require('../../assets/birds/shadows/cardinal_shadow.png'),
+  robin:          require('../../assets/birds/shadows/robin_shadow.png'),
+  hummingbird:    require('../../assets/birds/shadows/hummingbird_shadow.png'),
+  paintedbunting: require('../../assets/birds/shadows/painted_bunting_shadow.png'),
+  housesparrow:   require('../../assets/birds/shadows/house_sparrow_shadow.png'),
+  scissortailedflycatcher: require('../../assets/birds/shadows/scissor_tailed_flycatcher_shadow.png'),
+  bluejay:      require('../../assets/birds/shadows/blue_jay_shadow.png'),
 };
 
 interface Feather {
@@ -111,6 +117,15 @@ export function WaxwingButton({ onPress, size = 180, birdStyle, ringSize, waveAn
       setFeathers([]);
       birdOpacity.setValue(0);
       Animated.timing(birdOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+
+      return () => {
+        holdRef.current?.stop();
+        waveRef.current?.stop();
+        holdRef.current = null;
+        waveRef.current = null;
+        waveScales.forEach((ws, i) => { ws.setValue(ringScale); waveOpacities[i].setValue(0); });
+        setFeathers([]);
+      };
     }, [])
   );
 
@@ -224,11 +239,15 @@ export function WaxwingButton({ onPress, size = 180, birdStyle, ringSize, waveAn
 
   const shadowSource = BIRD_SHADOWS[b.id];
   const shadowInset = size * 0.015;
+  // Scissor-tailed flycatcher PNG is portrait (1080×1540); render at full width
+  // so the tail hangs below the button circle instead of being letterboxed.
+  const tailFactor = b.id === 'scissortailedflycatcher' ? 1540 / 1080 : 1.0;
 
   const bird = (
     <Animated.View
       style={{
         width: size, height: size,
+        overflow: 'visible',
         opacity: birdOpacity,
         transform: [{ scale }, { translateY: birdY }, { translateX: shakeX }],
       }}
@@ -240,7 +259,7 @@ export function WaxwingButton({ onPress, size = 180, birdStyle, ringSize, waveAn
           style={{
             position: 'absolute',
             width: size + shadowInset * 2,
-            height: size + shadowInset * 2,
+            height: size * tailFactor + shadowInset * 2,
             top: -shadowInset,
             left: -shadowInset,
             opacity: 0.22,
@@ -248,7 +267,7 @@ export function WaxwingButton({ onPress, size = 180, birdStyle, ringSize, waveAn
         />
       )}
       {pngSource
-        ? <Image source={pngSource} resizeMode="contain" style={{ width: size, height: size }} />
+        ? <Image source={pngSource} resizeMode="contain" style={{ width: size, height: size * tailFactor }} />
         : <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: b.body }} />
       }
     </Animated.View>

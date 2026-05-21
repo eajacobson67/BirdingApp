@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+﻿import { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, Animated, TouchableOpacity, Text, ScrollView, Pressable, Image, BackHandler, Dimensions, ActivityIndicator } from 'react-native';
 import { Svg, Defs, Pattern, Rect, Path, Line, G, Text as SvgText, TextPath } from 'react-native-svg';
 import { Audio } from 'expo-av';
@@ -77,7 +77,7 @@ export default function HomeScreen() {
   const { birdStyle } = useThemeStore();
   const t = birdStyle.theme;
   const c = useColors();
-  const { user } = useAuthStore();
+  const { user, isAdmin } = useAuthStore();
   const { location } = useBirdsStore();
 
   const [listenMode, setListenMode]       = useState(false);
@@ -421,6 +421,15 @@ export default function HomeScreen() {
         </Svg>
       </View>
 
+      {/* Admin button — top-right, only for admins, hidden in listen/camera mode */}
+      {isAdmin && (
+        <Animated.View style={[styles.adminBtn, { opacity: subOpacity }]} pointerEvents={(listenMode || cameraMode) ? 'none' : 'auto'}>
+          <TouchableOpacity onPress={() => router.push('/admin')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Ionicons name="construct-outline" size={22} color={t.primary} />
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
       {/* Back button */}
       <Animated.View style={[styles.backBtn, { opacity: backOpacity }]} pointerEvents={(listenMode || cameraMode) ? 'auto' : 'none'}>
         <TouchableOpacity onPress={listenMode ? exitListenMode : exitCameraMode} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
@@ -470,7 +479,7 @@ export default function HomeScreen() {
                 <Defs>
                   <Path id="textArc" d={ARC_PATH} />
                 </Defs>
-                <SvgText fill="#FFFFFF" fontSize="9.5" fontWeight="700" letterSpacing="2" textAnchor="middle" opacity="0.9">
+                <SvgText fill="#FFFFFF" fontSize="9.5" fontFamily="Nunito_700Bold" letterSpacing="2" textAnchor="middle" opacity="0.9">
                   <TextPath href="#textArc" startOffset="50%">TAP TO LOG A SIGHTING</TextPath>
                 </SvgText>
               </Svg>
@@ -482,7 +491,7 @@ export default function HomeScreen() {
                 <Defs>
                   <Path id="listenArc" d={LISTEN_ARC_PATH} />
                 </Defs>
-                <SvgText fill="#FFFFFF" fontSize="9.5" fontWeight="700" letterSpacing="2" textAnchor="middle" opacity="0.9">
+                <SvgText fill="#FFFFFF" fontSize="9.5" fontFamily="Nunito_700Bold" letterSpacing="2" textAnchor="middle" opacity="0.9">
                   <TextPath href="#listenArc" startOffset="50%">{listenText}</TextPath>
                 </SvgText>
               </Svg>
@@ -494,7 +503,7 @@ export default function HomeScreen() {
                 <Defs>
                   <Path id="cameraArc" d={LISTEN_ARC_PATH} />
                 </Defs>
-                <SvgText fill="#FFFFFF" fontSize="9.5" fontWeight="700" letterSpacing="2" textAnchor="middle" opacity="0.9">
+                <SvgText fill="#FFFFFF" fontSize="9.5" fontFamily="Nunito_700Bold" letterSpacing="2" textAnchor="middle" opacity="0.9">
                   <TextPath href="#cameraArc" startOffset="50%">TAP TO TAKE A PICTURE</TextPath>
                 </SvgText>
               </Svg>
@@ -694,6 +703,7 @@ const styles = StyleSheet.create({
   topSpacer:    { flex: 1.5 },
   cluster:      { position: 'relative' },
   backBtn:      { position: 'absolute', top: 56, left: 20, zIndex: 10 },
+  adminBtn:     { position: 'absolute', top: 56, right: 20, zIndex: 10 },
   ring: {
     position: 'absolute',
     borderWidth: RING_W,
@@ -705,7 +715,7 @@ const styles = StyleSheet.create({
     elevation: 16,
   },
   bottomArea:   { position: 'absolute', left: 0, right: 0, height: SCREEN_H * 0.65, paddingHorizontal: 20, paddingTop: 110 },
-  resultsLabel: { fontSize: 16, fontWeight: '700', marginBottom: 10 },
+  resultsLabel: { fontSize: 16, fontFamily: 'Nunito_700Bold', marginBottom: 10 },
   resultRow: {
     borderRadius: 12,
     padding: 14,
@@ -714,13 +724,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 8,
   },
-  resultName: { fontSize: 16, fontWeight: '600' },
+  resultName: { fontSize: 16, fontFamily: 'Nunito_600SemiBold' },
   resultSci:  { fontSize: 12, fontStyle: 'italic', marginTop: 2 },
   confPill:   { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
-  confText:   { fontSize: 13, fontWeight: '700' },
+  confText:   { fontSize: 13, fontFamily: 'Nunito_700Bold' },
   galleryHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   acceptBtn:   { borderRadius: 10, paddingHorizontal: 18, paddingVertical: 8 },
-  acceptText:  { fontSize: 14, fontWeight: '700' },
+  acceptText:  { fontSize: 14, fontFamily: 'Nunito_700Bold' },
   photoGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
   gridItem:    { width: '32.5%', aspectRatio: 1, borderRadius: 10, overflow: 'hidden' },
   gridPhoto:   { width: '100%', height: '100%' },

@@ -9,8 +9,12 @@ import {
   collection,
   query,
   orderBy,
+  where,
   limit,
   getDocs,
+  startAfter,
+  getCountFromServer,
+  QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -89,8 +93,64 @@ export async function updateUserStats(
   await updateDoc(doc(db, 'users', uid), update);
 }
 
-export async function getGlobalLeaderboard(count = 50): Promise<UserProfile[]> {
-  const q = query(collection(db, 'users'), orderBy('totalSpecies', 'desc'), limit(count));
+export async function searchUsersByUsername(term: string): Promise<UserProfile[]> {
+  if (!term) return [];
+  const lower = term.toLowerCase();
+  const q = query(
+    collection(db, 'users'),
+    where('username', '>=', lower),
+    where('username', '<=', lower + ''),
+    limit(15),
+  );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => d.data() as UserProfile);
+  return snap.docs.map(d => d.data() as UserProfile);
+}
+
+export async function promoteToAdmin(uid: string): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { isAdmin: true });
+}
+
+export async function adminSetStats(
+  uid: string,
+  updates: Partial<Pick<UserProfile, 'totalSightings' | 'totalSpecies'>>,
+): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), updates as Record<string, unknown>);
+}
+
+export async function adminClearLifeList(uid: string): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { yearSpecies: {}, totalSpecies: 0 });
+}
+
+export async function adminRemoveSpeciesFromLifeList(uid: string, species: string): Promise<void> {
+  const profile = await getUserProfile(uid);
+  if (!profile) return;
+  const yearSpecies = { ...profile.yearSpecies };
+  for (const year of Object.keys(yearSpecies)) {
+    yearSpecies[year] = yearSpecies[year].filter((s) => s !== species);
+    if (yearSpecies[year].length === 0) delete yearSpecies[year];
+  }
+  const totalSpecies = new Set(Object.values(yearSpecies).flat()).size;
+  await updateDoc(doc(db, 'users', uid), { yearSpecies, totalSpecies });
+}
+
+export async function getMyGlobalRank(totalSpecies: number): Promise<number> {
+  const snap = await getCountFromServer(
+    query(collection(db, 'users'), where('totalSpecies', '>', totalSpecies)),
+  );
+  return snap.data().count + 1;
+}
+
+export async function getGlobalLeaderboard(
+  count = 20,
+  after?: QueryDocumentSnapshot,
+): Promise<{ users: UserProfile[]; lastDoc: QueryDocumentSnapshot | null }> {
+  const constraints = after
+    ? [orderBy('totalSpecies', 'desc'), startAfter(after), limit(count)]
+    : [orderBy('totalSpecies', 'desc'), limit(count)];
+  const q = query(collection(db, 'users'), ...constraints);
+  const snap = await getDocs(q);
+  return {
+    users: snap.docs.map((d) => d.data() as UserProfile),
+    lastDoc: snap.docs[snap.docs.length - 1] ?? null,
+  };
 }
