@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,12 +12,13 @@ import {
   BackHandler,
 } from 'react-native';
 import { BirdAvatar, BIRD_STYLES, BirdStyle } from '../../components/ui/BirdAvatar';
+import { DEFAULT_BIRD_ID } from '../../lib/birdStyles';
 import { Avatar } from '../../components/ui/Avatar';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useThemeStore, useColors } from '../../store/themeStore';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useAuthStore } from '../../store/authStore';
@@ -43,11 +44,16 @@ export default function ProfileScreen() {
   const [sightingsExpanded, setSightingsExpanded] = useState(false);
   const [leaguePlacements, setLeaguePlacements] = useState<{ total: number; first: number; second: number; third: number } | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [birdStyleId, setBirdStyleId] = useState('waxwing');
+  const [birdStyleId, setBirdStyleId] = useState(DEFAULT_BIRD_ID);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState('');
 
   const year = new Date().getFullYear().toString();
+
+  const availableBirds = useMemo(() => {
+    const unlocked = new Set([DEFAULT_BIRD_ID, ...(profile?.unlockedBirds ?? [])]);
+    return BIRD_STYLES.filter((b) => unlocked.has(b.id));
+  }, [profile]);
 
   useEffect(() => {
     if (!user) return;
@@ -65,6 +71,13 @@ export default function ProfileScreen() {
       }
     }).finally(() => setLoading(false));
   }, [user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      getUserProfile(user.uid).then((p) => setProfile(p));
+    }, [user]),
+  );
 
   useEffect(() => {
     if (!pickerVisible) return;
@@ -167,12 +180,12 @@ export default function ProfileScreen() {
         </View>
 
         {/* Bird avatar picker */}
-        <Modal visible={pickerVisible} transparent animationType="slide">
+        <Modal visible={pickerVisible} transparent animationType="slide" onRequestClose={() => setPickerVisible(false)}>
           <View style={s.overlay}>
             <View style={[s.pickerSheet, { backgroundColor: c.surface, paddingBottom: 24 + insets.bottom }]}>
               <Text style={[s.pickerTitle, { color: c.textPrimary }]}>Choose your bird</Text>
               <ScrollView contentContainerStyle={s.pickerGrid} showsVerticalScrollIndicator={false}>
-                {BIRD_STYLES.map((b) => (
+                {availableBirds.map((b) => (
                   <TouchableOpacity
                     key={b.id}
                     style={[s.pickerItem, { backgroundColor: c.background, borderColor: b.id === birdStyleId ? c.primary : 'transparent' }]}
@@ -380,7 +393,7 @@ const s = StyleSheet.create({
   pickerSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '80%' },
   pickerTitle: { fontSize: 18, fontFamily: 'Nunito_800ExtraBold', marginBottom: 20, textAlign: 'center' },
   pickerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', paddingBottom: 8 },
-  pickerItem: { alignItems: 'center', gap: 6, padding: 10, borderRadius: 14, borderWidth: 2 },
-  pickerLabel: { fontSize: 11, fontFamily: 'Nunito_600SemiBold', textAlign: 'center', maxWidth: 90 },
+  pickerItem: { width: 100, alignItems: 'center', gap: 6, padding: 10, borderRadius: 14, borderWidth: 2 },
+  pickerLabel: { fontSize: 11, fontFamily: 'Nunito_600SemiBold', textAlign: 'center', width: '100%' },
   pickerCancel: { textAlign: 'center', paddingVertical: 16, fontSize: 15 },
 });

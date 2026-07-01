@@ -15,6 +15,8 @@ const BIRD_PNGS: Partial<Record<string, ImageSourcePropType>> = {
   housesparrow:   require('../../assets/birds/house_sparrow.png'),
   scissortailedflycatcher: require('../../assets/birds/scissor_tailed_flycatcher.png'),
   bluejay:      require('../../assets/birds/blue_jay.png'),
+  goldfinch:    require('../../assets/birds/american_goldfinch.png'),
+  blackcappedchickadee: require('../../assets/birds/black_capped_chickadee.png'),
 };
 
 const BIRD_SHADOWS: Partial<Record<string, ImageSourcePropType>> = {
@@ -26,6 +28,8 @@ const BIRD_SHADOWS: Partial<Record<string, ImageSourcePropType>> = {
   housesparrow:   require('../../assets/birds/shadows/house_sparrow_shadow.png'),
   scissortailedflycatcher: require('../../assets/birds/shadows/scissor_tailed_flycatcher_shadow.png'),
   bluejay:      require('../../assets/birds/shadows/blue_jay_shadow.png'),
+  goldfinch:    require('../../assets/birds/shadows/american_goldfinch_shadow.png'),
+  blackcappedchickadee: require('../../assets/birds/shadows/black_capped_chickadee_shadow.png'),
 };
 
 interface Feather {

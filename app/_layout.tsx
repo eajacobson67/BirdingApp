@@ -13,6 +13,7 @@ import { useAuthListener } from '../lib/hooks/useAuth';
 import { useAuthStore } from '../store/authStore';
 import { useBirdsStore } from '../store/birdsStore';
 import { useThemeStore } from '../store/themeStore';
+import { DEFAULT_BIRD_ID } from '../lib/birdStyles';
 import { getUserProfile } from '../lib/firestore/users';
 import { registerPushToken } from '../lib/notifications';
 
@@ -39,7 +40,7 @@ export default function RootLayout() {
         fetchBirds();
         getUserProfile(user.uid).then((profile) => {
           const id = (profile as unknown as Record<string, string>)?.birdStyleId;
-          if (id) setBirdStyle(id);
+          setBirdStyle(id ?? DEFAULT_BIRD_ID);
           setIsAdmin(profile?.isAdmin ?? false);
         });
         registerPushToken(user.uid).catch(() => {});

@@ -15,6 +15,8 @@ const birds = [
   'house_sparrow.png',
   'scissor_tailed_flycatcher.png',
   'blue_jay.png',
+  'american_goldfinch.png',
+  'black_capped_chickadee.png',
 ];
 
 const assetsDir   = path.join(__dirname, '..', 'assets', 'birds');

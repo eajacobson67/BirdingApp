@@ -17,6 +17,7 @@ import {
   QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+import { getBirdIdForSpecies, DEFAULT_BIRD_ID } from '../birdStyles';
 
 export interface UserProfile {
   uid: string;
@@ -25,6 +26,7 @@ export interface UserProfile {
   photoURL: string;
   birdStyleId?: string;
   isAdmin?: boolean;
+  unlockedBirds?: string[];
   bio: string;
   totalSightings: number;
   totalSpecies: number;
@@ -104,6 +106,32 @@ export async function searchUsersByUsername(term: string): Promise<UserProfile[]
   );
   const snap = await getDocs(q);
   return snap.docs.map(d => d.data() as UserProfile);
+}
+
+export function getDefaultUnlockedBirds(): string[] {
+  return [DEFAULT_BIRD_ID];
+}
+
+export async function checkAndUnlockBird(uid: string, commonName: string): Promise<string | null> {
+  const birdId = getBirdIdForSpecies(commonName);
+  if (!birdId || birdId === DEFAULT_BIRD_ID) return null;
+
+  const profile = await getUserProfile(uid);
+  const already = profile?.unlockedBirds ?? [];
+  if (already.includes(birdId)) return null;
+
+  await updateDoc(doc(db, 'users', uid), { unlockedBirds: arrayUnion(birdId) });
+  return birdId;
+}
+
+export async function adminUnlockAllBirds(uid: string): Promise<void> {
+  const { BIRD_STYLES } = await import('../birdStyles');
+  const allIds = BIRD_STYLES.map((b) => b.id);
+  await updateDoc(doc(db, 'users', uid), { unlockedBirds: allIds });
+}
+
+export async function adminRelockAllBirds(uid: string): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { unlockedBirds: [] });
 }
 
 export async function promoteToAdmin(uid: string): Promise<void> {

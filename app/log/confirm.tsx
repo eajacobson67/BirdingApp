@@ -9,12 +9,19 @@ import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
 import { Ionicons } from '@expo/vector-icons';
-import { useColors } from '../../store/themeStore';
+import { useColors, useThemeStore } from '../../store/themeStore';
 import { logSighting } from '../../lib/firestore/sightings';
-import { updateUserStats } from '../../lib/firestore/users';
+import { updateUserStats, checkAndUnlockBird, getUserProfile } from '../../lib/firestore/users';
+import { BADGES } from '../../components/ui/BadgeIcon';
+import { BadgeUnlockModal } from '../../components/ui/BadgeUnlockModal';
+import type { Badge } from '../../components/ui/BadgeIcon';
 import { getUserLeagues, logLeagueSighting } from '../../lib/firestore/leagues';
 import { useAuthStore } from '../../store/authStore';
 import { useBirdsStore } from '../../store/birdsStore';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { BIRD_STYLES, type BirdStyle } from '../../lib/birdStyles';
+import { BirdUnlockModal } from '../../components/ui/BirdUnlockModal';
 import { geohashForLocation } from 'geofire-common';
 import { getRarity, getRarityFromCount, RARITY_COLORS, RARITY_LABELS } from '../../lib/birdRarity';
 
@@ -22,6 +29,7 @@ export default function ConfirmSightingScreen() {
   const c = useColors();
   const { user } = useAuthStore();
   const { birds, location } = useBirdsStore();
+  const setBirdStyle = useThemeStore((s) => s.setBirdStyle);
   const { commonName, scientificName, photoUri } = useLocalSearchParams<{ commonName: string; scientificName: string; photoUri?: string }>();
 
   const [notes, setNotes] = useState('');
@@ -29,6 +37,9 @@ export default function ConfirmSightingScreen() {
   const [photoURL, setPhotoURL] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [unlockedBird, setUnlockedBird] = useState<BirdStyle | null>(null);
+  const [earnedBadge, setEarnedBadge] = useState<Badge | null>(null);
+  const [pendingBird, setPendingBird] = useState<BirdStyle | null>(null);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => { router.back(); return true; });
@@ -112,12 +123,31 @@ export default function ConfirmSightingScreen() {
           ),
       );
 
+      const oldProfile = await getUserProfile(user.uid);
+      const oldBadgeIds = new Set(BADGES.filter((b) => b.check(oldProfile)).map((b) => b.id));
+
       await updateUserStats(
         user.uid, commonName, year,
         location.state || null, location.lat, location.lng, geohash,
       );
+
+      const newProfile = await getUserProfile(user.uid);
+      const newBadge = BADGES.find((b) => b.check(newProfile) && !oldBadgeIds.has(b.id)) ?? null;
+
+      const newBirdId = await checkAndUnlockBird(user.uid, commonName);
+      const newBirdStyle = newBirdId ? (BIRD_STYLES.find((b) => b.id === newBirdId) ?? null) : null;
+
+      if (newBadge) {
+        setPendingBird(newBirdStyle);
+        setEarnedBadge(newBadge);
+        return;
+      }
+      if (newBirdStyle) {
+        setUnlockedBird(newBirdStyle);
+        return;
+      }
+
       router.replace('/(tabs)');
-      Alert.alert('Logged!', `${commonName} added to your life list.`);
     } catch (e: unknown) {
       Alert.alert('Error', (e as Error).message);
     } finally {
@@ -126,6 +156,7 @@ export default function ConfirmSightingScreen() {
   }
 
   return (
+    <>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <SafeAreaView style={[s.container, { backgroundColor: c.background }]}>
       <View style={[s.header, { borderBottomColor: c.border }]}>
@@ -207,6 +238,33 @@ export default function ConfirmSightingScreen() {
       </View>
     </SafeAreaView>
     </KeyboardAvoidingView>
+
+    {earnedBadge && (
+      <BadgeUnlockModal
+        badge={earnedBadge}
+        onContinue={() => {
+          setEarnedBadge(null);
+          if (pendingBird) {
+            setUnlockedBird(pendingBird);
+            setPendingBird(null);
+          } else {
+            router.replace('/(tabs)');
+          }
+        }}
+      />
+    )}
+    {unlockedBird && (
+      <BirdUnlockModal
+        birdStyle={unlockedBird}
+        onContinue={() => router.replace('/(tabs)')}
+        onSelectNow={() => {
+          setBirdStyle(unlockedBird.id);
+          if (user) updateDoc(doc(db, 'users', user.uid), { birdStyleId: unlockedBird.id }).catch(() => {});
+          router.replace('/(tabs)');
+        }}
+      />
+    )}
+    </>
   );
 }
 

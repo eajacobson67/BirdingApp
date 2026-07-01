@@ -2,9 +2,9 @@ import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BIRD_STYLES, BirdStyle, ThemePalette } from '../lib/birdStyles';
+import { BIRD_STYLES, BirdStyle, ThemePalette, DEFAULT_BIRD_ID } from '../lib/birdStyles';
 
-const DEFAULT = BIRD_STYLES[0];
+const DEFAULT = BIRD_STYLES.find((b) => b.id === DEFAULT_BIRD_ID) ?? BIRD_STYLES[0];
 
 interface ThemeState {
   birdStyle: BirdStyle;

@@ -151,11 +151,14 @@ export async function getActiveLeagues(): Promise<League[]> {
   const q = query(
     collection(db, 'leagues'),
     where('status', '==', 'active'),
-    orderBy('endDate', 'asc'),
     limit(50),
   );
+  const now = new Date();
   const snap = await getDocs(q);
-  return snap.docs.map((d) => firestoreToLeague(d.id, d.data()));
+  return snap.docs
+    .map((d) => firestoreToLeague(d.id, d.data()))
+    .filter((l) => l.endDate > now)
+    .sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
 }
 
 export async function getPublicLeagues(count = 30): Promise<League[]> {

@@ -51,6 +51,8 @@ These rules come directly from the user and must be followed:
 | `owl` | Great Horned Owl | Brown, ear tufts, **two forward-facing golden eyes** |
 | `housesparrow` | House Sparrow | Warm brown, gray crown, streaked wings |
 | `scissortailedflycatcher` | Scissor-tailed Flycatcher | Light gray body, steel-blue chest, salmon flanks, long forked tail |
+| `goldfinch` | American Goldfinch | Golden-yellow body, black cap, black wings, large dark eyes |
+| `blackcappedchickadee` | Black-capped Chickadee | Dark navy cap/back, white cheek patches, warm buff flanks |
 
 ---
 

@@ -13,6 +13,7 @@ import { useAuthStore } from '../store/authStore';
 import {
   getUserProfile, searchUsersByUsername, promoteToAdmin,
   adminSetStats, adminClearLifeList, adminRemoveSpeciesFromLifeList,
+  adminUnlockAllBirds, adminRelockAllBirds,
 } from '../lib/firestore/users';
 import { getActiveLeagues, setLeagueEndTime } from '../lib/firestore/leagues';
 import { BADGES } from '../components/ui/BadgeIcon';
@@ -346,6 +347,37 @@ export default function AdminScreen() {
                   disabled={statsWorking}
                 >
                   <Text style={s.pillText}>Clear all</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Bird avatars */}
+              <View style={s.inputRow}>
+                <Text style={[s.fieldLabel, { color: c.gray, flex: 1 }]}>Bird avatars</Text>
+                <TouchableOpacity
+                  style={[s.pill, { backgroundColor: c.primary }]}
+                  onPress={async () => {
+                    if (!user) return;
+                    setStatsWorking(true);
+                    await adminUnlockAllBirds(user.uid);
+                    await loadProfile();
+                    setStatsWorking(false);
+                  }}
+                  disabled={statsWorking}
+                >
+                  <Text style={s.pillText}>Unlock all</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.pill, { backgroundColor: c.danger }]}
+                  onPress={async () => {
+                    if (!user) return;
+                    setStatsWorking(true);
+                    await adminRelockAllBirds(user.uid);
+                    await loadProfile();
+                    setStatsWorking(false);
+                  }}
+                  disabled={statsWorking}
+                >
+                  <Text style={s.pillText}>Lock all</Text>
                 </TouchableOpacity>
               </View>
 

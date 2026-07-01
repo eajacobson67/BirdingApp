@@ -15,6 +15,9 @@ export interface BirdStyle {
   theme: ThemePalette;
 }
 
+// Change this one line to switch the default bird across the whole app.
+export const DEFAULT_BIRD_ID = 'robin';
+
 export const BIRD_STYLES: BirdStyle[] = [
   {
     id: 'waxwing',
@@ -88,4 +91,35 @@ export const BIRD_STYLES: BirdStyle[] = [
       surface: '#FFFFFF', border: '#AECBEE', gray: '#8A8FA0', danger: '#1A2A4A',
     },
   },
+  {
+    id: 'goldfinch',
+    label: 'American Goldfinch',
+    body: '#C4A200',
+    theme: {
+      primary: '#C4A200', accent: '#1A1A1A', background: '#FDFBE6',
+      surface: '#FFFFFF', border: '#B09800', gray: '#9A8C60', danger: '#7A5800',
+    },
+  },
+  {
+    id: 'blackcappedchickadee',
+    label: 'Black-capped Chickadee',
+    body: '#1A2235',
+    theme: {
+      primary: '#1A2235', accent: '#C4902A', background: '#F0F1F5',
+      surface: '#FFFFFF', border: '#B0BAC8', gray: '#8A9BAA', danger: '#0E1528',
+    },
+  },
 ];
+
+const EXTRA_ALIASES: Record<string, string> = {
+  'ruby-throated hummingbird': 'hummingbird',
+  'ruby throated hummingbird': 'hummingbird',
+};
+
+export function getBirdIdForSpecies(commonName: string): string | null {
+  const key = commonName.toLowerCase();
+  for (const b of BIRD_STYLES) {
+    if (b.label.toLowerCase() === key) return b.id;
+  }
+  return EXTRA_ALIASES[key] ?? null;
+}
