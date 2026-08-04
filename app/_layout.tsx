@@ -28,10 +28,9 @@ export default function RootLayout() {
   const { user, loading, setIsAdmin } = useAuthStore();
   const fetchBirds = useBirdsStore((s) => s.fetchBirds);
   const setBirdStyle = useThemeStore((s) => s.setBirdStyle);
-  const themeHydrated = useThemeStore((s) => s._hasHydrated);
 
   useEffect(() => {
-    if (!fontsLoaded || loading || !themeHydrated) return;
+    if (!fontsLoaded || loading) return;
     const t = setTimeout(() => {
       if (!user) {
         router.replace('/(auth)/login');
@@ -49,7 +48,7 @@ export default function RootLayout() {
     return () => clearTimeout(t);
   }, [user, loading, fontsLoaded]);
 
-  if (!fontsLoaded || !themeHydrated) return null;
+  if (!fontsLoaded) return null;
 
   return (
     <>
