@@ -32,8 +32,10 @@ export default function UserProfileScreen() {
 
   useEffect(() => {
     if (!id || !user) return;
-    Promise.all([getUserProfile(id), getUserSightings(id, 20), getConnectionStatus(user.uid, id)])
-      .then(([p, s, conn]) => { setProfile(p); setSightings(s); setConnection(conn); setLoading(false); });
+    Promise.all([getUserProfile(id), getUserSightings(id, 20, id !== user.uid), getConnectionStatus(user.uid, id)])
+      .then(([p, s, conn]) => { setProfile(p); setSightings(s); setConnection(conn); })
+      .catch((e: unknown) => Alert.alert('Error', (e as Error).message))
+      .finally(() => setLoading(false));
   }, [id, user]);
 
   async function handleFriendAction(accept?: boolean) {

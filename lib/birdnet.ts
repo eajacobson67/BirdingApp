@@ -31,7 +31,10 @@ export async function identifyFromAudio(
     throw new Error(`BirdNET ${response.status}: ${body.slice(0, 300)}`);
   }
 
-  const data = await response.json() as { results: Array<Record<string, unknown>> };
+  const data = await response.json() as { results?: Array<Record<string, unknown>> };
+  if (!Array.isArray(data?.results)) {
+    throw new Error(`BirdNET: unexpected response shape (no results array)`);
+  }
   return data.results.map(r => ({
     commonName:     String(r.common_name     ?? 'Unknown'),
     scientificName: String(r.scientific_name ?? ''),
@@ -66,7 +69,10 @@ export async function identifyFromLocalUri(
     throw new Error(`BirdNET ${response.status}: ${body.slice(0, 300)}`);
   }
 
-  const data = await response.json() as { results: Array<Record<string, unknown>> };
+  const data = await response.json() as { results?: Array<Record<string, unknown>> };
+  if (!Array.isArray(data?.results)) {
+    throw new Error(`BirdNET: unexpected response shape (no results array)`);
+  }
   return data.results.map(r => ({
     commonName:     String(r.common_name     ?? 'Unknown'),
     scientificName: String(r.scientific_name ?? ''),

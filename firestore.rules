@@ -1,0 +1,139 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // isAdmin lives on the user doc and is NOT client-writable (see /users).
+    // Promote via the console or the Admin SDK.
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true;
+    }
+
+    function changed(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasAny(keys);
+    }
+
+    function onlyChanged(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    match /sightings/{id} {
+      allow read: if signedIn() &&
+        (resource.data.isPublic == true || resource.data.userId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+
+      // A client may never grant itself (or anyone) admin. Without this, the
+      // isAdmin() helper above is trivially forgeable.
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.get('isAdmin', false) == false;
+      allow update: if signedIn()
+        && request.auth.uid == userId
+        && !changed(['isAdmin']);
+
+      match /pushTokens/{tokenId} {
+        allow read, write: if signedIn() && request.auth.uid == userId;
+      }
+      match /leagueMemberships/{leagueId} {
+        allow read, write: if signedIn() && request.auth.uid == userId;
+      }
+      match /pendingInvites/{leagueId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+        // An inviter writes into the invitee's subtree; only the invitee may
+        // then respond to or clear it.
+        allow create: if signedIn();
+        allow update, delete: if signedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // Seeded reference data (scripts/seed-birds.mjs writes these via the Admin
+    // SDK, which bypasses rules). Clients read only.
+    match /species/{docId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /commonBirds/{stateCode} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /friendships/{uid}/connections/{connectionId} {
+      allow read: if signedIn() && request.auth.uid == uid;
+
+      // Your own connection list: full control.
+      allow write: if signedIn() && request.auth.uid == uid;
+
+      // The mirror side. sendFriendRequest, acceptFriendRequest and
+      // removeFriend each write BOTH directions, so a user must be able to
+      // touch the single document that represents THEM in someone else's list —
+      // and nothing else in that list.
+      allow create, update: if signedIn()
+        && request.auth.uid == connectionId
+        && request.resource.data.status in ['pending', 'accepted'];
+      allow delete: if signedIn() && request.auth.uid == connectionId;
+    }
+
+    match /leagues/{leagueId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+
+      // Only the league owner (or an admin) may change league settings. Anyone
+      // joining needs to bump memberCount, which is the sole exception.
+      allow update: if signedIn() && (
+        resource.data.createdBy == request.auth.uid
+        || isAdmin()
+        || onlyChanged(['memberCount'])
+      );
+      allow delete: if signedIn() && resource.data.createdBy == request.auth.uid;
+
+      // A member row is owned by that member. This stops one player editing
+      // another's score. It does NOT stop a player inflating their own score —
+      // points are computed client-side, so that requires a Cloud Function.
+      match /members/{memberId} {
+        allow read: if signedIn();
+        allow create, update: if signedIn() && request.auth.uid == memberId;
+        allow delete: if signedIn() && (
+          request.auth.uid == memberId
+          || get(/databases/$(database)/documents/leagues/$(leagueId)).data.createdBy == request.auth.uid
+        );
+      }
+
+      match /invites/{inviteeId} {
+        allow read: if signedIn();
+        // Only an existing member may invite; only the invitee may respond.
+        allow create: if signedIn()
+          && exists(/databases/$(database)/documents/leagues/$(leagueId)/members/$(request.auth.uid));
+        allow update: if signedIn() && (
+          request.auth.uid == inviteeId
+          || exists(/databases/$(database)/documents/leagues/$(leagueId)/members/$(request.auth.uid))
+        );
+        allow delete: if signedIn() && request.auth.uid == inviteeId;
+      }
+
+      // An append-only scoring log. Editing history would let a player rewrite
+      // their own results after the fact.
+      match /sightings/{sightingId} {
+        allow read: if signedIn();
+        allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      // Clients only ever read the daily target list.
+      match /targetBirds/{date} {
+        allow read: if signedIn();
+        allow write: if false;
+      }
+    }
+  }
+}

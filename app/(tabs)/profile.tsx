@@ -24,7 +24,8 @@ import { auth } from '../../lib/firebase';
 import { useAuthStore } from '../../store/authStore';
 import { getUserProfile, UserProfile } from '../../lib/firestore/users';
 import { getUserSightings, Sighting } from '../../lib/firestore/sightings';
-import { getFriendsLeaderboard } from '../../lib/firestore/friends';
+import { getFriendsLeaderboard, acceptFriendRequest, removeFriend } from '../../lib/firestore/friends';
+import { useNotificationsStore } from '../../store/notificationsStore';
 import { getUserLeaguePlacements } from '../../lib/firestore/leagues';
 import { StatCard } from '../../components/ui/StatCard';
 import { BadgeIcon, BADGES } from '../../components/ui/BadgeIcon';
@@ -35,6 +36,11 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const setBirdStyle = useThemeStore((s) => s.setBirdStyle);
+  const friendRequestIds = useNotificationsStore((s) => s.friendRequestIds);
+  const refreshNotifications = useNotificationsStore((s) => s.refresh);
+  const removeFriendRequest = useNotificationsStore((s) => s.removeFriendRequest);
+  const [requestProfiles, setRequestProfiles] = useState<UserProfile[]>([]);
+  const [respondingTo, setRespondingTo] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [sightings, setSightings] = useState<Sighting[]>([]);
   const [friends, setFriends] = useState<UserProfile[]>([]);
@@ -49,6 +55,31 @@ export default function ProfileScreen() {
   const [draftName, setDraftName] = useState('');
 
   const year = new Date().getFullYear().toString();
+
+  useEffect(() => {
+    if (friendRequestIds.length === 0) {
+      setRequestProfiles([]);
+      return;
+    }
+    Promise.all(friendRequestIds.map((id) => getUserProfile(id)))
+      .then((ps) => setRequestProfiles(ps.filter((p): p is UserProfile => p !== null)))
+      .catch(() => setRequestProfiles([]));
+  }, [friendRequestIds]);
+
+  async function respondToRequest(fromUid: string, accept: boolean) {
+    if (!user) return;
+    setRespondingTo(fromUid);
+    try {
+      if (accept) await acceptFriendRequest(user.uid, fromUid);
+      else await removeFriend(user.uid, fromUid);
+      removeFriendRequest(fromUid);
+      if (accept) setFriends(await getFriendsLeaderboard(user.uid));
+    } catch (e: unknown) {
+      Alert.alert('Error', (e as Error).message);
+    } finally {
+      setRespondingTo(null);
+    }
+  }
 
   const availableBirds = useMemo(() => {
     const unlocked = new Set([DEFAULT_BIRD_ID, ...(profile?.unlockedBirds ?? [])]);
@@ -76,7 +107,8 @@ export default function ProfileScreen() {
     useCallback(() => {
       if (!user) return;
       getUserProfile(user.uid).then((p) => setProfile(p));
-    }, [user]),
+      refreshNotifications(user.uid);
+    }, [user, refreshNotifications]),
   );
 
   useEffect(() => {
@@ -225,6 +257,48 @@ export default function ProfileScreen() {
           </View>
         )}
 
+        {/* Friend Requests */}
+        {requestProfiles.length > 0 && (
+          <View style={[s.section, s.card, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <Text style={[s.sectionTitle, { color: c.textPrimary }]}>
+              Friend Requests ({requestProfiles.length})
+            </Text>
+            <View style={{ gap: 10 }}>
+              {requestProfiles.map((p) => (
+                <View key={p.uid} style={s.requestRow}>
+                  <TouchableOpacity onPress={() => router.push(`/user/${p.uid}`)}>
+                    <Avatar photoURL={p.photoURL} birdStyleId={p.birdStyleId} size={40} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{ flex: 1 }} onPress={() => router.push(`/user/${p.uid}`)}>
+                    <Text style={[s.requestName, { color: c.textPrimary }]}>{p.displayName}</Text>
+                    <Text style={[s.requestHandle, { color: c.gray }]} numberOfLines={1}>
+                      @{p.username}
+                    </Text>
+                  </TouchableOpacity>
+                  {respondingTo === p.uid ? (
+                    <ActivityIndicator color={c.primary} size="small" />
+                  ) : (
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity
+                        style={[s.requestBtn, { backgroundColor: c.accent }]}
+                        onPress={() => respondToRequest(p.uid, true)}
+                      >
+                        <Text style={[s.requestBtnText, { color: '#FFFFFF' }]}>Accept</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[s.requestBtn, { backgroundColor: c.surface, borderWidth: 1.5, borderColor: c.border }]}
+                        onPress={() => respondToRequest(p.uid, false)}
+                      >
+                        <Text style={[s.requestBtnText, { color: c.gray }]}>Decline</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Find Friends */}
         <TouchableOpacity
           style={[s.findFriendsBtn, { backgroundColor: c.accent }]}
@@ -350,6 +424,11 @@ const s = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 10, padding: 16, flexWrap: 'wrap' },
   section: { marginTop: 12, marginHorizontal: 16 },
   card: { borderRadius: 16, borderWidth: 1, padding: 16, overflow: 'hidden' },
+  requestRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  requestName: { fontSize: 15, fontFamily: 'Nunito_700Bold' },
+  requestHandle: { fontSize: 13, marginTop: 1 },
+  requestBtn: { borderRadius: 10, paddingVertical: 7, paddingHorizontal: 12 },
+  requestBtnText: { fontSize: 13, fontFamily: 'Nunito_700Bold' },
   findFriendsBtn: {
     marginHorizontal: 16, marginTop: 12,
     borderRadius: 12, paddingVertical: 14,

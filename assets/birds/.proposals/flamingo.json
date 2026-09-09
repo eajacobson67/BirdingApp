@@ -1,0 +1,10 @@
+{
+  "primary":    "#E8608A",
+  "accent":     "#1C1C2E",
+  "background": "#FDEDF4",
+  "surface":    "#FFFFFF",
+  "border":     "#F0A8C0",
+  "gray":       "#B0909A",
+  "danger":     "#C03060",
+  "body":       "#E8608A"
+}

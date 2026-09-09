@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Pin Circle Offset Preview</title>
+<style>
+  body { background: #1a2a3a; font-family: sans-serif; color: #fff; padding: 24px; }
+  h2 { margin-bottom: 4px; }
+  p { color: #aaa; margin-bottom: 24px; font-size: 13px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 32px; }
+  .cell { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .pin-wrap {
+    position: relative;
+    width: 180px; /* 60px × 3 */
+    height: 204px; /* 68px × 3 */
+  }
+  .pin-wrap img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 180px; height: 180px;
+  }
+  .circle {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 80, 80, 0.55);
+    border: 3px solid #ff5050;
+    box-sizing: border-box;
+  }
+  .label { font-size: 12px; color: #ccc; text-align: center; line-height: 1.5; }
+  .label b { color: #fff; }
+</style>
+</head>
+<body>
+<h2>Pin Circle Offset Preview</h2>
+<p>Top:8, left:11 locked. Varying <b>size</b> only (34–50). Current (D) = 40.</p>
+<div class="grid" id="grid"></div>
+<script>
+  const PIN = 'assets/buttons/bird_pin.png';
+  const SCALE = 3;
+
+  // Center locked at (31, 28) — top/left computed as center - size/2
+  const CX = 31, CY = 28;
+  const sizes = [34, 36, 38, 40, 42, 44, 46, 48, 50];
+  const options = sizes.map((size, i) => ({
+    label: String.fromCharCode(65 + i),
+    size,
+    left: CX - size / 2,
+    top:  CY - size / 2,
+    current: size === 40,
+  }));
+
+  const grid = document.getElementById('grid');
+  options.forEach(o => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'pin-wrap';
+    if (o.current) wrap.style.outline = '2px solid #4af';
+
+    const img = document.createElement('img');
+    img.src = PIN;
+
+    const circle = document.createElement('div');
+    circle.className = 'circle';
+    circle.style.top    = (o.top  * SCALE) + 'px';
+    circle.style.left   = (o.left * SCALE) + 'px';
+    circle.style.width  = (o.size * SCALE) + 'px';
+    circle.style.height = (o.size * SCALE) + 'px';
+
+    wrap.appendChild(img);
+    wrap.appendChild(circle);
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.innerHTML = `<b>${o.label}</b><br>top:${o.top} left:${o.left} size:${o.size}${o.current ? '<br><span style="color:#4af">← current</span>' : ''}`;
+
+    cell.appendChild(wrap);
+    cell.appendChild(label);
+    grid.appendChild(cell);
+  });
+</script>
+</body>
+</html>

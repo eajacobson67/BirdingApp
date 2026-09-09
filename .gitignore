@@ -46,3 +46,10 @@ yarn-error.*
 
 # Seed script cache — large generated file, not needed in source control
 scripts/seed-cache.json
+
+# Firebase emulator artifacts
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+storage-debug.log
+.firebase/

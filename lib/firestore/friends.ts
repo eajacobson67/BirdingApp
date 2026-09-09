@@ -1,10 +1,9 @@
 import {
   collection,
   doc,
-  setDoc,
+  writeBatch,
   getDoc,
   getDocs,
-  deleteDoc,
   query,
   where,
   serverTimestamp,
@@ -18,33 +17,42 @@ export interface Connection {
   direction?: 'sent' | 'received';
 }
 
+// Each of these writes both sides of the friendship. Batched so a failure on
+// the mirror side cannot leave a one-sided connection behind — previously the
+// second write was denied by rules and the first had already landed.
 export async function sendFriendRequest(fromUid: string, toUid: string) {
-  await setDoc(doc(db, 'friendships', fromUid, 'connections', toUid), {
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'friendships', fromUid, 'connections', toUid), {
     status: 'pending',
     direction: 'sent',
     since: serverTimestamp(),
   });
-  await setDoc(doc(db, 'friendships', toUid, 'connections', fromUid), {
+  batch.set(doc(db, 'friendships', toUid, 'connections', fromUid), {
     status: 'pending',
     direction: 'received',
     since: serverTimestamp(),
   });
+  await batch.commit();
 }
 
 export async function acceptFriendRequest(uid: string, fromUid: string) {
-  await setDoc(doc(db, 'friendships', uid, 'connections', fromUid), {
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'friendships', uid, 'connections', fromUid), {
     status: 'accepted',
     since: serverTimestamp(),
   });
-  await setDoc(doc(db, 'friendships', fromUid, 'connections', uid), {
+  batch.set(doc(db, 'friendships', fromUid, 'connections', uid), {
     status: 'accepted',
     since: serverTimestamp(),
   });
+  await batch.commit();
 }
 
 export async function removeFriend(uid: string, friendUid: string) {
-  await deleteDoc(doc(db, 'friendships', uid, 'connections', friendUid));
-  await deleteDoc(doc(db, 'friendships', friendUid, 'connections', uid));
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'friendships', uid, 'connections', friendUid));
+  batch.delete(doc(db, 'friendships', friendUid, 'connections', uid));
+  await batch.commit();
 }
 
 export async function getFriendIds(uid: string): Promise<string[]> {

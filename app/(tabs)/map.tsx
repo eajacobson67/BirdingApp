@@ -12,37 +12,20 @@ import { getUserProfile } from '../../lib/firestore/users';
 import { useFriends } from '../../lib/hooks/useFriends';
 import { fetchBirdThumbnails } from '../../lib/birdImages';
 import { getUserLeagues, getLeagueLeaderboard } from '../../lib/firestore/leagues';
+import { clusterSightings, type MapRegion, type Cluster } from '../../lib/clustering';
 
 
-interface MapRegion { latDelta: number; lngDelta: number; }
-interface Cluster { lat: number; lng: number; lead: Sighting; sightings: Sighting[]; count: number; }
 type MapFilter = 'all' | 'friends' | 'league' | 'photos';
 interface SelectedSighting { cluster: Cluster; usernames: Record<string, string | null>; }
 
-function clusterSightings(sightings: Sighting[], region: MapRegion): Cluster[] {
-  const latT = Math.max(region.latDelta * 0.07, 0.0008);
-  const lngT = Math.max(region.lngDelta * 0.07, 0.0008);
-  const visited = new Set<string>();
-  const clusters: Cluster[] = [];
-  for (const s of sightings) {
-    if (visited.has(s.id)) continue;
-    const group = sightings.filter(
-      (o) =>
-        !visited.has(o.id) &&
-        Math.abs(o.location.lat - s.location.lat) < latT &&
-        Math.abs(o.location.lng - s.location.lng) < lngT,
-    );
-    for (const g of group) visited.add(g.id);
-    clusters.push({ lat: s.location.lat, lng: s.location.lng, lead: s, sightings: group, count: group.length });
-  }
-  return clusters;
-}
 
 
-function BirdPin({ primaryColor, photoUri, count }: {
+function BirdPin({ primaryColor, photoUri, count, onPinLoad, onPhotoLoad }: {
   primaryColor: string;
   photoUri: string | null;
   count: number;
+  onPinLoad?: () => void;
+  onPhotoLoad?: () => void;
 }) {
   const showPhoto = count === 1 && photoUri;
   return (
@@ -51,12 +34,14 @@ function BirdPin({ primaryColor, photoUri, count }: {
         source={require('../../assets/buttons/bird_pin.png')}
         style={{ width: 60, height: 60, tintColor: primaryColor }}
         resizeMode="contain"
+        onLoad={onPinLoad}
       />
       {showPhoto && (
         <Image
           source={{ uri: photoUri }}
           style={{ position: 'absolute', top: 4, left: 7, width: 48, height: 48, borderRadius: 24 }}
           resizeMode="cover"
+          onLoad={onPhotoLoad}
         />
       )}
       {count > 1 && (
@@ -75,6 +60,45 @@ function BirdPin({ primaryColor, photoUri, count }: {
   );
 }
 
+/**
+ * Owns its own tracksViewChanges so rasterisation stops only once every image
+ * the pin will actually show has painted. Freezing on a fixed timer instead
+ * leaves the marker blank whenever an image lands after the timer — which is
+ * why no pins were visible.
+ */
+function ClusterMarker({ cluster, primaryColor, photoUri, onPress }: {
+  cluster: Cluster;
+  primaryColor: string;
+  photoUri: string | null;
+  count?: number;
+  onPress: () => void;
+}) {
+  const [pinLoaded, setPinLoaded] = useState(false);
+  const [photoLoaded, setPhotoLoaded] = useState(false);
+  const showPhoto = cluster.count === 1 && !!photoUri;
+
+  useEffect(() => { setPhotoLoaded(false); }, [photoUri]);
+
+  const ready = pinLoaded && (!showPhoto || photoLoaded);
+
+  return (
+    <Marker
+      coordinate={{ latitude: cluster.lat, longitude: cluster.lng }}
+      tracksViewChanges={!ready}
+      anchor={{ x: 0.5, y: 1 }}
+      onPress={onPress}
+    >
+      <BirdPin
+        primaryColor={primaryColor}
+        photoUri={photoUri}
+        count={cluster.count}
+        onPinLoad={() => setPinLoaded(true)}
+        onPhotoLoad={() => setPhotoLoaded(true)}
+      />
+    </Marker>
+  );
+}
+
 export default function MapScreen() {
   const theme = useTheme();
   const { user } = useAuthStore();
@@ -88,23 +112,17 @@ export default function MapScreen() {
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const [leagueBounds, setLeagueBounds] = useState<Array<{ memberIds: Set<string>; start: Date; end: Date }>>([]);
   const [selected, setSelected] = useState<SelectedSighting | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const cardAnim = useRef(new Animated.Value(0)).current;
   const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
     async function load() {
-      console.log('[Map] load() start');
       try {
-        console.log('[Map] requesting location...');
         const loc = await getFastLocation();
-        console.log('[Map] location result:', loc);
-        console.log('[Map] fetching sightings...');
         const data = await getRecentPublicSightings(200);
-        console.log('[Map] sightings fetched:', data.length);
         if (loc) {
-          const ul = { latitude: loc.lat, longitude: loc.lng };
-          setUserLocation(ul);
-          mapRef.current?.animateToRegion({ ...ul, latitudeDelta: 0.15, longitudeDelta: 0.15 }, 600);
+          setUserLocation({ latitude: loc.lat, longitude: loc.lng });
         } else {
           console.warn('[Map] no location returned — permission denied or unavailable');
         }
@@ -115,7 +133,6 @@ export default function MapScreen() {
         console.error('[Map] load error:', e);
       } finally {
         setLoading(false);
-        console.log('[Map] load() done');
       }
     }
     load();
@@ -152,12 +169,17 @@ export default function MapScreen() {
   }, [mapFilter, allSightings, friendSightings, leagueBounds]);
 
   const clusters = useMemo(() => clusterSightings(displayed, region), [displayed, region]);
-  const [clustersStable, setClustersStable] = useState(false);
+
+  // animateToRegion is silently dropped if it runs before the native map is
+  // ready, which left the camera stuck on initialRegion (the whole US) and
+  // meant onRegionChangeComplete never fired to sync `region`.
   useEffect(() => {
-    setClustersStable(false);
-    const t = setTimeout(() => setClustersStable(true), 400);
-    return () => clearTimeout(t);
-  }, [clusters]);
+    if (!mapReady || !userLocation) return;
+    mapRef.current?.animateToRegion(
+      { ...userLocation, latitudeDelta: 0.15, longitudeDelta: 0.15 },
+      600,
+    );
+  }, [mapReady, userLocation]);
 
   function centerOnUser() {
     if (userLocation && mapRef.current) {
@@ -205,6 +227,7 @@ export default function MapScreen() {
         ref={mapRef}
         style={styles.map}
         initialRegion={{ latitude: 39.5, longitude: -98.35, latitudeDelta: 40, longitudeDelta: 40 }}
+        onMapReady={() => setMapReady(true)}
         showsUserLocation
         showsMyLocationButton={false}
         mapPadding={{ top: 0, left: 0, bottom: 0, right: 0 }}
@@ -213,34 +236,26 @@ export default function MapScreen() {
           setRegion({ latDelta: r.latitudeDelta, lngDelta: r.longitudeDelta })
         }
       >
-        {clusters.map((c) => {
-          return (
-            <Marker
-              key={`${c.lat}-${c.lng}-${c.lead.id}`}
-              coordinate={{ latitude: c.lat, longitude: c.lng }}
-              tracksViewChanges={!clustersStable}
-              anchor={{ x: 0.5, y: 1 }}
-              onPress={() => {
-                if (c.count > 99) {
-                  mapRef.current?.animateToRegion({
-                    latitude: c.lat,
-                    longitude: c.lng,
-                    latitudeDelta: region.latDelta * 0.4,
-                    longitudeDelta: region.lngDelta * 0.4,
-                  }, 400);
-                } else {
-                  selectCluster(c);
-                }
-              }}
-            >
-              <BirdPin
-                primaryColor={theme.primary}
-                photoUri={c.lead.photoURL || thumbnails[c.lead.commonName] || null}
-                count={c.count}
-              />
-            </Marker>
-          );
-        })}
+        {clusters.map((c) => (
+          <ClusterMarker
+            key={`${c.lat}-${c.lng}-${c.lead.id}`}
+            cluster={c}
+            primaryColor={theme.primary}
+            photoUri={c.lead.photoURL || thumbnails[c.lead.commonName] || null}
+            onPress={() => {
+              if (c.count > 99) {
+                mapRef.current?.animateToRegion({
+                  latitude: c.lat,
+                  longitude: c.lng,
+                  latitudeDelta: region.latDelta * 0.4,
+                  longitudeDelta: region.lngDelta * 0.4,
+                }, 400);
+              } else {
+                selectCluster(c);
+              }
+            }}
+          />
+        ))}
       </MapView>
 
       {loading && (

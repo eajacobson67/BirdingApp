@@ -60,7 +60,7 @@ export async function logSighting(data: {
   return ref.id;
 }
 
-function extractCoords(location: unknown): { lat: number; lng: number } {
+export function extractCoords(location: unknown): { lat: number; lng: number } {
   const loc = location as Record<string, number>;
   return { lat: loc.latitude ?? loc.lat, lng: loc.longitude ?? loc.lng };
 }
@@ -110,6 +110,7 @@ export function subscribeToFriendSightings(
   const q = query(
     collection(db, 'sightings'),
     where('userId', 'in', ids),
+    where('isPublic', '==', true),
     orderBy('timestamp', 'desc'),
     limit(50),
   );
@@ -128,10 +129,17 @@ export function subscribeToFriendSightings(
   });
 }
 
-export async function getUserSightings(userId: string, count = 100): Promise<Sighting[]> {
+// Rules reject a query unless its constraints prove every match is readable, so
+// reading someone else's sightings requires the explicit isPublic filter.
+export async function getUserSightings(
+  userId: string,
+  count = 100,
+  publicOnly = false,
+): Promise<Sighting[]> {
   const q = query(
     collection(db, 'sightings'),
     where('userId', '==', userId),
+    ...(publicOnly ? [where('isPublic', '==', true)] : []),
     orderBy('timestamp', 'desc'),
     limit(count),
   );

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
   ActivityIndicator, StyleSheet,
@@ -8,14 +8,23 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../store/themeStore';
 import { useAuthStore } from '../../store/authStore';
-import { searchUsersByUsername, UserProfile } from '../../lib/firestore/users';
-import { getConnectionStatus, sendFriendRequest, Connection } from '../../lib/firestore/friends';
+import { searchUsersByUsername, getUserProfile, UserProfile } from '../../lib/firestore/users';
+import {
+  getConnectionStatus, sendFriendRequest, acceptFriendRequest, removeFriend,
+  getPendingRequests, Connection,
+} from '../../lib/firestore/friends';
 import { Avatar } from '../../components/ui/Avatar';
+import { useNotificationsStore } from '../../store/notificationsStore';
 
 interface Result {
   profile: UserProfile;
   connection: Connection | null;
   requesting: boolean;
+}
+
+interface PendingRequest {
+  profile: UserProfile;
+  busy: boolean;
 }
 
 export default function FriendSearchScreen() {
@@ -25,6 +34,45 @@ export default function FriendSearchScreen() {
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [pending, setPending] = useState<PendingRequest[]>([]);
+  const removeFriendRequest = useNotificationsStore((s) => s.removeFriendRequest);
+
+  useEffect(() => {
+    if (!user) return;
+    getPendingRequests(user.uid)
+      .then((uids) => Promise.all(uids.map((id) => getUserProfile(id))))
+      .then((profiles) =>
+        setPending(
+          profiles.filter((p): p is UserProfile => p !== null).map((profile) => ({ profile, busy: false })),
+        ),
+      )
+      .catch(() => setPending([]));
+  }, [user]);
+
+  function setBusy(uid: string, busy: boolean) {
+    setPending((prev) => prev.map((p) => (p.profile.uid === uid ? { ...p, busy } : p)));
+  }
+
+  async function respond(uid: string, accept: boolean) {
+    if (!user) return;
+    setBusy(uid, true);
+    try {
+      if (accept) await acceptFriendRequest(user.uid, uid);
+      else await removeFriend(user.uid, uid);
+      setPending((prev) => prev.filter((p) => p.profile.uid !== uid));
+      removeFriendRequest(uid);
+      // Keep any matching search row in sync with the new state.
+      setResults((prev) =>
+        prev.map((r) =>
+          r.profile.uid === uid
+            ? { ...r, connection: accept ? { status: 'accepted', since: new Date() } : null }
+            : r,
+        ),
+      );
+    } catch {
+      setBusy(uid, false);
+    }
+  }
 
   const search = useCallback(async () => {
     const term = query.trim();
@@ -124,6 +172,49 @@ export default function FriendSearchScreen() {
           data={results}
           keyExtractor={r => r.profile.uid}
           contentContainerStyle={{ padding: 16, gap: 10 }}
+          ListHeaderComponent={
+            pending.length > 0 ? (
+              <View style={{ marginBottom: 18, gap: 10 }}>
+                <Text style={[s.sectionTitle, { color: c.textPrimary }]}>
+                  Friend Requests ({pending.length})
+                </Text>
+                {pending.map((p) => (
+                  <View
+                    key={p.profile.uid}
+                    style={[s.row, { backgroundColor: c.surface, borderColor: c.border }]}
+                  >
+                    <TouchableOpacity onPress={() => router.push(`/user/${p.profile.uid}`)}>
+                      <Avatar photoURL={p.profile.photoURL} birdStyleId={p.profile.birdStyleId} size={44} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.meta} onPress={() => router.push(`/user/${p.profile.uid}`)}>
+                      <Text style={[s.displayName, { color: c.textPrimary }]}>{p.profile.displayName}</Text>
+                      <Text style={[s.username, { color: c.gray }]} numberOfLines={1}>
+                        @{p.profile.username}
+                      </Text>
+                    </TouchableOpacity>
+                    {p.busy ? (
+                      <ActivityIndicator color={c.primary} size="small" />
+                    ) : (
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TouchableOpacity
+                          style={[s.btn, { backgroundColor: c.accent }]}
+                          onPress={() => respond(p.profile.uid, true)}
+                        >
+                          <Text style={[s.btnText, { color: '#FFFFFF' }]}>Accept</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[s.btn, { backgroundColor: c.surface, borderWidth: 1.5, borderColor: c.border }]}
+                          onPress={() => respond(p.profile.uid, false)}
+                        >
+                          <Text style={[s.btnText, { color: c.gray }]}>Decline</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             searched ? (
               <Text style={[s.empty, { color: c.gray }]}>No users found for "{query}".</Text>
@@ -145,7 +236,11 @@ export default function FriendSearchScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.btn, buttonStyle(r)]}
-                onPress={() => sendRequest(r.profile.uid)}
+                onPress={() =>
+                  r.connection?.status === 'pending' && r.connection.direction === 'received'
+                    ? respond(r.profile.uid, true)
+                    : sendRequest(r.profile.uid)
+                }
                 disabled={buttonDisabled(r)}
               >
                 {r.requesting
@@ -166,6 +261,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1,
   },
   title: { fontSize: 18, fontFamily: 'Nunito_800ExtraBold' },
+  sectionTitle: { fontSize: 15, fontFamily: 'Nunito_800ExtraBold' },
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     margin: 16, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10,

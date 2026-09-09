@@ -56,12 +56,56 @@ These rules come directly from the user and must be followed:
 
 ---
 
+## Testing
+
+See `TESTING.md` for the full rationale. Short version:
+
+- `npm test` — unit + api + config (fast, no emulator)
+- `npm run test:rules` — permission matrix against the Firebase emulator; **needs
+  `JAVA_HOME` set to Android Studio's JBR, from PowerShell not Git Bash**
+- `npm run audit:firebase` — print every Firestore/Storage path the app touches
+
+**Security rules are server-side, so mocked tests cannot catch rule bugs.** Any
+permission work must be verified with `npm run test:rules`, never with mocks.
+
+`firestore.rules`, `storage.rules` and `firestore.indexes.json` now live in the
+repo and are the source of truth. Changing them requires a deploy:
+`npx firebase-tools deploy --only firestore:rules,firestore:indexes,storage`.
+
+`__tests__/config/coverage.test.ts` fails if a collection is added without a
+rule, or a composite query without an index. That guard is the reason permission
+bugs stop being found one screen at a time — don't delete it.
+
+### Rules are not filters
+
+Firestore permits a query only if its constraints *prove* every match is
+readable; it does not silently drop unreadable docs. Any query over `sightings`
+that is not scoped to the caller's own uid **must** include
+`where('isPublic','==',true)` or it fails wholesale.
+
 ## Architecture Decisions
 
 ### Theme System
 - Each `BirdStyle` has a `theme: ThemePalette` embedded in it.
 - `themeStore` stores `birdStyleId`; `useColors()` looks up the active bird's palette.
 - `useTheme()` returns the full `ThemePalette`; `useColors()` returns the same but is the standard hook to use in components.
+
+### react-native-maps must stay on the Expo-pinned version
+
+Expo SDK 54 pins `react-native-maps` to **1.20.1**. The project was on 1.27.2,
+and the entire native map silently failed to initialise: `onMapReady` never
+fired, `onRegionChangeComplete` never fired, the camera never moved off
+`initialRegion`, and **no markers rendered at all** — including stock markers
+with no custom children. The JS half looked completely healthy (component
+mounted, sightings fetched, clusters computed at correct coordinates), which
+made it look like a marker-rendering bug for a long time.
+
+**Run `npx expo install --check` before debugging any native module.** A version
+skew is far cheaper to rule out than reading application code. Do not let a
+caret range (`^1.27.2`) drift this dependency; keep it pinned exactly.
+
+Changing it requires a full native rebuild (`npx expo run:android`) — Fast
+Refresh cannot apply native module changes.
 
 ### Map Pins (Android-safe)
 - Custom marker views: `anchor={{ x: 0.5, y: 1 }}` (pin tail at bottom-center).

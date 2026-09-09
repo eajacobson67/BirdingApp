@@ -2,6 +2,7 @@
 import { View, Pressable, Animated } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useThemeStore } from '../../store/themeStore';
+import { useNotificationsStore } from '../../store/notificationsStore';
 
 const NAV_H  = 64;   // visible tab bar row height
 const PILL_W = 68;   // pill width
@@ -31,6 +32,14 @@ const LABELS: Record<string, string> = {
 export function CustomTabBar({ state, navigation, insets }: BottomTabBarProps) {
   const { birdStyle } = useThemeStore();
   const t = birdStyle.theme;
+
+  const friendRequests = useNotificationsStore((s) => s.friendRequestIds.length);
+  const leagueInvites = useNotificationsStore((s) => s.leagueInviteCount);
+
+  const badgeCount: Record<string, number> = {
+    profile: friendRequests,
+    league: leagueInvites,
+  };
 
   const anims = useRef(
     state.routes.map((_, i) => new Animated.Value(i === state.index ? 1 : 0))
@@ -122,6 +131,22 @@ export function CustomTabBar({ state, navigation, insets }: BottomTabBarProps) {
                   }}
                   resizeMode="contain"
                 />
+
+                {/* Unread dot — sits inside the icon box so it rides along
+                    with the icon when the tab is focused and floats up. */}
+                {badgeCount[route.name] > 0 && (
+                  <View style={{
+                    position: 'absolute',
+                    top: 4,
+                    right: 4,
+                    width: 12,
+                    height: 12,
+                    borderRadius: 6,
+                    backgroundColor: '#E5484D',
+                    borderWidth: 2,
+                    borderColor: t.surface,
+                  }} />
+                )}
               </Animated.View>
 
               {/* Label — fades out when focused */}

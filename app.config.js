@@ -35,18 +35,15 @@ export default {
         backgroundColor: '#F5EFE0',
       },
       package: 'com.birdapp.app',
+      // Play rejects an upload that reuses a versionCode. Bump this on every
+      // release; leaving it implicit makes prebuild regenerate 1 each time.
+      versionCode: 1,
       permissions: [
-        'ACCESS_FINE_LOCATION',
-        'ACCESS_COARSE_LOCATION',
-        'RECORD_AUDIO',
-        'CAMERA',
-        'READ_EXTERNAL_STORAGE',
-        'READ_MEDIA_IMAGES',
-        'android.permission.ACCESS_COARSE_LOCATION',
         'android.permission.ACCESS_FINE_LOCATION',
-        'android.permission.CAMERA',
+        'android.permission.ACCESS_COARSE_LOCATION',
         'android.permission.RECORD_AUDIO',
         'android.permission.MODIFY_AUDIO_SETTINGS',
+        'android.permission.CAMERA',
         'android.permission.READ_MEDIA_IMAGES',
         'android.permission.READ_EXTERNAL_STORAGE',
       ],
