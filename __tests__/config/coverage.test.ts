@@ -295,8 +295,13 @@ describe('dev/prod Firebase project separation', () => {
 
   function parseEnvFile(path: string): Record<string, string> {
     const out: Record<string, string> = {};
+    // Lines are trimmed before matching because git rewrites these files with
+    // CRLF on checkout under core.autocrlf. A trailing \r is unmatchable by
+    // /(.*)$/ in JS — `.` excludes \r and `$` wants true end-of-string — so
+    // matching the raw line parsed zero keys and failed the assertions below
+    // as though the config were missing.
     for (const line of readFileSync(path, 'utf8').split('\n')) {
-      const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+      const m = line.trim().match(/^([A-Z0-9_]+)=(.*)$/);
       if (m) out[m[1]] = m[2].trim();
     }
     return out;

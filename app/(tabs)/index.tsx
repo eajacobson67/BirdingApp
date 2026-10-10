@@ -12,6 +12,7 @@ import { LogSubButton } from '../../components/home/LogSubButton';
 import { useThemeStore, useColors } from '../../store/themeStore';
 import { identifyFromLocalUri, BirdNetResult } from '../../lib/birdnet';
 import { identifyFromImage, BirdVisionResult } from '../../lib/birdvision';
+import { PHOTO_ID_ENABLED } from '../../lib/features';
 import { useAuthStore } from '../../store/authStore';
 import { useBirdsStore } from '../../store/birdsStore';
 
@@ -37,6 +38,7 @@ const CX  = CW / 2;
 const RLF = Math.round(CX - RING / 2);
 const SLF = Math.round(CX - DX - SUB / 2);
 const SRF = Math.round(CX + DX - SUB / 2);
+const SCF = Math.round(CX - SUB / 2); // centred: used when only one sub-button shows
 const STF = Math.round(RING / 2 + DY - SUB / 2);
 
 const TEXT_R  = (RING / 2 + RING / 2 - RING_W) / 2;
@@ -574,12 +576,19 @@ export default function HomeScreen() {
           ))}
 
           {/* 5. Sub-buttons — fade out in listen/camera mode */}
-          <Animated.View style={{ position: 'absolute', left: SLF, top: STF, opacity: subOpacity }} pointerEvents={(listenMode || cameraMode) ? 'none' : 'auto'}>
+          {/*
+            The two sub-buttons orbit the main button symmetrically. With photo
+            ID hidden the mic is the only one left, so it moves to centre —
+            otherwise it sits visibly off-axis and reads as a layout bug.
+          */}
+          <Animated.View style={{ position: 'absolute', left: PHOTO_ID_ENABLED ? SLF : SCF, top: STF, opacity: subOpacity }} pointerEvents={(listenMode || cameraMode) ? 'none' : 'auto'}>
             <LogSubButton source={require('../../assets/buttons/microphone_button.png')} onPress={enterListenMode} />
           </Animated.View>
-          <Animated.View style={{ position: 'absolute', left: SRF, top: STF, opacity: subOpacity }} pointerEvents={(listenMode || cameraMode) ? 'none' : 'auto'}>
-            <LogSubButton source={require('../../assets/buttons/camera_button.png')} onPress={enterCameraMode} />
-          </Animated.View>
+          {PHOTO_ID_ENABLED && (
+            <Animated.View style={{ position: 'absolute', left: SRF, top: STF, opacity: subOpacity }} pointerEvents={(listenMode || cameraMode) ? 'none' : 'auto'}>
+              <LogSubButton source={require('../../assets/buttons/camera_button.png')} onPress={enterCameraMode} />
+            </Animated.View>
+          )}
 
         </Animated.View>
 
