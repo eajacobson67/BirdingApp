@@ -100,6 +100,14 @@ export default function RootLayout() {
           name="admin"
           options={{ headerShown: false }}
         />
+        <Stack.Screen
+          name="legal/privacy"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="settings/delete-account"
+          options={{ headerShown: false }}
+        />
       </Stack>
     </>
   );

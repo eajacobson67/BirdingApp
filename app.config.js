@@ -55,6 +55,11 @@ export default {
       favicon: './assets/favicon.png',
     },
     plugins: [
+      // Listed first deliberately: config-plugin manifest mods run in reverse
+      // registration order, and this one has to run last to survive
+      // expo-media-library. See plugins/withManifestCleanup.js.
+      './plugins/withManifestCleanup',
+      './plugins/withReleaseSigning',
       'expo-router',
       'expo-location',
       [

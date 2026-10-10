@@ -257,7 +257,9 @@ export default function HomeScreen() {
   }
 
   async function loadGallery() {
-    const { status } = await MediaLibrary.requestPermissionsAsync();
+    // Narrowed to photos so the manifest can drop READ_MEDIA_VIDEO/AUDIO — an
+    // unnarrowed request asks for permissions that are no longer declared.
+    const { status } = await MediaLibrary.requestPermissionsAsync(false, ['photo']);
     if (status !== 'granted') return;
     const { assets } = await MediaLibrary.getAssetsAsync({
       mediaType: MediaLibrary.MediaType.photo,

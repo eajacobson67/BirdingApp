@@ -97,6 +97,17 @@ beforeEach(async () => {
       status: 'lobby',
     });
     await setDoc(doc(db, 'leagues/lg1/members', ALICE), { points: 10 });
+    await setDoc(doc(db, 'leagues/lg1/sightings', 'ls1'), { userId: ALICE, points: 3 });
+    await setDoc(doc(db, 'leagues/lg1/sightings', 'ls2'), { userId: BOB, points: 5 });
+    await setDoc(doc(db, 'leagues/lg1/invites', ALICE), { status: 'pending' });
+    await setDoc(doc(db, 'users', ALICE, 'leagueMemberships', 'lg1'), { joinedAt: new Date() });
+
+    // The mirror half of the friendship. removeFriend() and account deletion
+    // both write this side, which lives in someone else's subtree.
+    await setDoc(doc(db, 'friendships', BOB, 'connections', ALICE), {
+      status: 'accepted',
+      direction: 'received',
+    });
   });
 });
 
@@ -398,14 +409,16 @@ describe('leagues', () => {
     );
   });
 
-  test('the league scoring log is append-only', async () => {
+  // Rewriting a row stays impossible. Deleting one's own row became allowed
+  // when account deletion landed — see the 'league scoring log stays
+  // append-only' block for why that does not open a cheating path.
+  test('a league scoring row cannot be rewritten', async () => {
     await assertSucceeds(
       setDoc(doc(asBob(), 'leagues/lg1/sightings/s1'), { userId: BOB, points: 5 }),
     );
     await assertFails(
       setDoc(doc(asBob(), 'leagues/lg1/sightings/s1'), { userId: BOB, points: 500 }),
     );
-    await assertFails(deleteDoc(doc(asBob(), 'leagues/lg1/sightings/s1')));
   });
 
   test('a scoring log entry cannot be attributed to someone else', async () => {
@@ -454,5 +467,84 @@ describe('admin escalation', () => {
 
   test('ordinary profile updates still work', async () => {
     await assertSucceeds(updateDoc(doc(asBob(), 'users', BOB), { totalSpecies: 5 }));
+  });
+});
+
+// ── account deletion ─────────────────────────────────────────────────────────
+/**
+ * deleteAccount() in lib/firestore/account.ts runs entirely client-side under
+ * the user's own credentials, so every step below has to be a write the rules
+ * already permit. Play requires the flow to exist; these tests are what prove
+ * it can actually complete rather than dying half-way and stranding an account
+ * with its data partly gone.
+ */
+describe('account deletion', () => {
+  test('a user can delete their own profile document', async () => {
+    await assertSucceeds(deleteDoc(doc(asAlice(), 'users', ALICE)));
+  });
+
+  test('a user CANNOT delete someone else\'s profile', async () => {
+    await assertFails(deleteDoc(doc(asBob(), 'users', ALICE)));
+  });
+
+  test('a user can delete their own sightings', async () => {
+    await assertSucceeds(deleteDoc(doc(asAlice(), 'sightings/pub1')));
+  });
+
+  test('a user can delete their own push tokens', async () => {
+    await assertSucceeds(deleteDoc(doc(asAlice(), 'users', ALICE, 'pushTokens', 't1')));
+  });
+
+  test('a user can delete their own league membership cache', async () => {
+    await assertSucceeds(
+      deleteDoc(doc(asAlice(), 'users', ALICE, 'leagueMemberships', 'lg1')),
+    );
+  });
+
+  test('a user can delete their own league member row', async () => {
+    await assertSucceeds(deleteDoc(doc(asAlice(), 'leagues/lg1/members', ALICE)));
+  });
+
+  test('a user can decrement memberCount when leaving', async () => {
+    await assertSucceeds(updateDoc(doc(asBob(), 'leagues/lg1'), { memberCount: 0 }));
+  });
+
+  test('a user can clear a pending league invite addressed to them', async () => {
+    await assertSucceeds(deleteDoc(doc(asAlice(), 'leagues/lg1/invites', ALICE)));
+  });
+
+  /**
+   * The friendship mirror. Leaving it behind would show Bob a friend whose
+   * profile no longer exists, so the rules have to allow Alice to remove the
+   * single row representing her inside Bob's connection list.
+   */
+  test('a user can delete their own row in another user\'s friend list', async () => {
+    await assertSucceeds(deleteDoc(doc(asAlice(), 'friendships', BOB, 'connections', ALICE)));
+  });
+
+  test('deleting the mirror row does NOT open the rest of that list', async () => {
+    // Alice may remove the row representing HER inside Bob's list, and nothing
+    // else in it — otherwise account deletion would double as a way to tear up
+    // other people's friendships.
+    await assertFails(deleteDoc(doc(asAlice(), 'friendships', BOB, 'connections', CAROL)));
+  });
+});
+
+describe('league scoring log stays append-only', () => {
+  /**
+   * Deletion had to be opened up for account deletion. Update did not, and must
+   * not be: rewriting a scoring row is how a player would inflate their own
+   * result after the fact. Deleting one can only ever lower their own score.
+   */
+  test('the author can delete their own scoring row', async () => {
+    await assertSucceeds(deleteDoc(doc(asAlice(), 'leagues/lg1/sightings', 'ls1')));
+  });
+
+  test('a player CANNOT delete another player\'s scoring row', async () => {
+    await assertFails(deleteDoc(doc(asBob(), 'leagues/lg1/sightings', 'ls1')));
+  });
+
+  test('nobody can edit a scoring row, not even its author', async () => {
+    await assertFails(updateDoc(doc(asAlice(), 'leagues/lg1/sightings', 'ls1'), { points: 999 }));
   });
 });

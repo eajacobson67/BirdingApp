@@ -386,6 +386,25 @@ export default function ProfileScreen() {
             </View>
           )}
         </View>
+
+        {/* Account */}
+        <View style={[s.section, s.card, { backgroundColor: c.surface, borderColor: c.border }]}>
+          <Text style={[s.sectionTitle, { color: c.textPrimary, marginBottom: 12 }]}>Account</Text>
+          <TouchableOpacity
+            style={[s.accountRow, { borderBottomWidth: 1, borderBottomColor: c.border }]}
+            onPress={() => router.push('/legal/privacy')}
+          >
+            <Text style={[s.accountRowText, { color: c.textPrimary }]}>Privacy Policy</Text>
+            <Text style={[s.expandIcon, { color: c.gray }]}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={s.accountRow}
+            onPress={() => router.push('/settings/delete-account')}
+          >
+            <Text style={[s.accountRowText, { color: c.danger }]}>Delete account</Text>
+            <Text style={[s.expandIcon, { color: c.danger }]}>›</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -468,6 +487,13 @@ const s = StyleSheet.create({
   chipText: { fontSize: 13, fontFamily: 'Nunito_600SemiBold', flex: 1 },
   chipCount: { fontSize: 12, fontFamily: 'Nunito_700Bold' },
   empty: { fontSize: 14, marginTop: 8 },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 13,
+  },
+  accountRowText: { fontSize: 15, fontFamily: 'Nunito_600SemiBold' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   pickerSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '80%' },
   pickerTitle: { fontSize: 18, fontFamily: 'Nunito_800ExtraBold', marginBottom: 20, textAlign: 'center' },

@@ -15,6 +15,9 @@ export function getAuthErrorMessage(error: unknown): string {
       return 'Incorrect email or password.';
     case 'auth/user-disabled':
       return 'This account has been disabled. Please contact support.';
+    // Re-authentication (account deletion)
+    case 'auth/requires-recent-login':
+      return 'For security, sign out and sign back in, then try deleting again.';
     // Shared
     case 'auth/invalid-email':
       return 'Please enter a valid email address.';

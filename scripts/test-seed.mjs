@@ -3,8 +3,8 @@
 // Run this first to verify each component before running the full seed.
 // node scripts/test-seed.mjs
 
-import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { initAdminApp } from './lib/adminApp.mjs';
 
 const EBIRD_KEY = '59vakk8sprlj';
 const ST_KEY = process.env.EBIRD_ST_KEY;
@@ -17,7 +17,7 @@ console.log('GOOGLE_APPLICATION_CREDENTIALS:', process.env.GOOGLE_APPLICATION_CR
 console.log('\n--- Firebase ---');
 let db;
 try {
-  initializeApp();
+  initAdminApp();
   db = getFirestore();
   await db.collection('_diag').doc('ping').set({ ts: new Date() });
   await db.collection('_diag').doc('ping').delete();

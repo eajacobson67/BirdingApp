@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // Adds 30 sightings to the eajacobson67 account and updates their user stats.
+// Dev project only (initAdminApp() refuses prod) — run against the account's
+// dev-project copy, not the real one.
 // node scripts/seed-my-sightings.mjs
 
-import { initializeApp } from 'firebase-admin/app';
+import { initAdminApp } from './lib/adminApp.mjs';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { geohashForLocation } from 'geofire-common';
 
-initializeApp();
+initAdminApp();
 const db = getFirestore();
 
 const BIRDS = [

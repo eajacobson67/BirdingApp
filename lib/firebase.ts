@@ -4,16 +4,35 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// TODO: Replace with your Firebase project config from https://console.firebase.google.com
+// Which Firebase project this build talks to is picked by Expo's built-in
+// env-file loading, not by anything in this file:
+//   npx expo start / npx expo run:android (debug)  -> NODE_ENV=development -> .env.development -> birdapp-dev-birdleague
+//   ./gradlew bundleRelease / assembleRelease       -> NODE_ENV=production  -> .env.production  -> birding-app-1a446 (real users)
+// See docs/RELEASE.md and .env.development/.env.production. Firebase web
+// config is not a secret (Google's own docs say so) — real access control is
+// firestore.rules/storage.rules, not this key.
 const firebaseConfig = {
-  apiKey: "AIzaSyA96oYtGFmXuXoDc06e9_GITo9pJXMeJfc",
-  authDomain: "birding-app-1a446.firebaseapp.com",
-  projectId: "birding-app-1a446",
-  storageBucket: "birding-app-1a446.firebasestorage.app",
-  messagingSenderId: "132532463413",
-  appId: "1:132532463413:web:f00efac1f0051e0edf4e7c",
-  measurementId: "G-ZSQP1V8LZK"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
+
+// A silently-undefined projectId would mean every read/write fails at runtime
+// with an opaque network error, far from this file. Fail immediately instead.
+if (!firebaseConfig.projectId) {
+  throw new Error(
+    'Firebase config is missing (EXPO_PUBLIC_FIREBASE_PROJECT_ID unset). ' +
+    'Check .env.development / .env.production exist and restart Metro — env files are only read at startup.',
+  );
+}
+
+if (__DEV__) {
+  console.log(`[firebase] connected to project: ${firebaseConfig.projectId}`);
+}
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 

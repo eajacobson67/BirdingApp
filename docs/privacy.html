@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — Bird League</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      max-width: 42rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem;
+      font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #23201a; background: #f5efe0;
+    }
+    h1 { font-size: 1.9rem; margin: 0 0 .35rem; }
+    h2 { font-size: 1.15rem; margin: 2rem 0 .5rem; }
+    .meta { color: #6d675c; font-size: .9rem; margin: 0 0 2rem; }
+    ul { padding-left: 1.2rem; }
+    li { margin: .4rem 0; }
+    a { color: #b4571f; }
+    @media (prefers-color-scheme: dark) {
+      body { color: #ece6da; background: #1b1916; }
+      .meta { color: #9a9284; }
+      a { color: #e8a06a; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Privacy Policy</h1>
+    <p class="meta">Bird League · Effective September 8, 2026 · <a href="mailto:eajacobson67@gmail.com">eajacobson67@gmail.com</a></p>
+
+    <h2>What this policy covers</h2>
+    <p>Bird League is a social app for logging bird sightings. This policy explains what the app collects, why, where it goes, and how to get rid of it. It applies to the Android app and the backend services it talks to.</p>
+
+    <h2>Information you give us</h2>
+    <p>Creating an account and using the app stores the following:</p>
+    <ul>
+      <li>Account details — your email address, username, display name, and optional bio. Passwords are handled by Firebase Authentication and are never visible to us.</li>
+      <li>Sightings — the species you log, the precise GPS coordinates of the sighting, a place name, state and country, the time, and any notes you add.</li>
+      <li>Photos and audio — pictures you attach to a sighting and recordings you make for identification.</li>
+      <li>Social activity — friend connections, league memberships, and league scores.</li>
+    </ul>
+
+    <h2>Device permissions</h2>
+    <p>The app asks for these permissions, and only uses them for the stated purpose:</p>
+    <ul>
+      <li>Location — to place a sighting on the map and to narrow identification to species plausible for that place and date. Collected only at the moment you log a sighting.</li>
+      <li>Camera — to photograph a bird for a sighting.</li>
+      <li>Microphone — to record a call for identification.</li>
+      <li>Photos — to let you pick an existing picture. The app reads your gallery to show recent thumbnails; nothing is uploaded until you attach it to a sighting.</li>
+      <li>Notifications — to tell you about friend requests and league activity. Optional.</li>
+    </ul>
+
+    <h2>What is public</h2>
+    <p>Sightings are public by default. A public sighting — including its species, coordinates, photo, and time — is visible on the map, in the feed, and on leaderboards to anyone signed in to the app. Your username, display name, bio, avatar, and totals are also visible to other signed-in users.</p>
+    <p>If a sighting is somewhere you would rather not disclose, such as your home, do not log it as public.</p>
+
+    <h2>Where your data goes</h2>
+    <p>The app uses Google Firebase (Authentication, Cloud Firestore, Cloud Storage) to store data, and Google Cloud Run to host the two identification services we operate.</p>
+    <ul>
+      <li>Audio you record is uploaded to our storage and sent to our identification service, which runs the BirdNET model, along with the coordinates and date so it can weight the result by region and season.</li>
+      <li>Photos you submit for identification are sent to our image identification service with the same coordinates and date.</li>
+      <li>Google Maps renders the map screen. Map interactions are subject to Google’s own privacy policy.</li>
+      <li>We do not sell your data, and we do not share it with advertisers or data brokers.</li>
+    </ul>
+
+    <h2>How long we keep it</h2>
+    <p>Sightings, photos, and audio are kept until you delete them or delete your account. Account records are kept for as long as the account exists.</p>
+
+    <h2>Deleting your account</h2>
+    <p>You can delete your account from inside the app: Profile, then Delete account. You will be asked for your password to confirm.</p>
+    <p>Deleting removes your profile, every sighting you logged, the photos and recordings attached to them, your friend connections, your league memberships and scores, and your notification tokens. It cannot be undone.</p>
+    <p>You can also request deletion by emailing eajacobson67@gmail.com from the address on the account. Requests are handled within 30 days.</p>
+    <p>Leagues you created are not deleted, because they hold other players’ scores. Your membership and your own scoring rows are removed from them.</p>
+
+    <h2>Children</h2>
+    <p>Bird League is not directed at children under 13, and we do not knowingly collect information from them. If you believe a child has created an account, email eajacobson67@gmail.com and we will remove it.</p>
+
+    <h2>Security</h2>
+    <p>Data is transmitted over HTTPS and stored in Firebase with server-side security rules that restrict each record to the accounts allowed to read or write it. No system is perfectly secure, and we cannot guarantee absolute security.</p>
+
+    <h2>Changes</h2>
+    <p>If this policy changes materially we will update the effective date above and note the change in the app.</p>
+
+    <h2>Contact</h2>
+    <p>Questions about this policy: eajacobson67@gmail.com.</p>
+  </main>
+</body>
+</html>

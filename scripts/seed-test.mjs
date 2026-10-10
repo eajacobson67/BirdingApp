@@ -4,7 +4,7 @@
 // If commonBirds/USA-WI and species/taxonomy appear in Firestore after this, the full seed will work.
 // node scripts/seed-test.mjs
 
-import { initializeApp } from 'firebase-admin/app';
+import { initAdminApp } from './lib/adminApp.mjs';
 import { getFirestore } from 'firebase-admin/firestore';
 
 const EBIRD_KEY = '59vakk8sprlj';
@@ -16,7 +16,7 @@ const SPECIES_LIMIT     = 20; // only download S&T for the first 20 WI species
 
 if (!ST_KEY) { console.error('Set EBIRD_ST_KEY'); process.exit(1); }
 
-initializeApp();
+initAdminApp();
 const db = getFirestore();
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }

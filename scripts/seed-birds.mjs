@@ -6,15 +6,17 @@
 //
 // One-time setup:
 //   npm install --save-dev firebase-admin
-//   Download service account key: Firebase console → Project Settings → Service accounts → Generate new private key
-//   set GOOGLE_APPLICATION_CREDENTIALS=C:\path\to\serviceAccountKey.json
+//   set GOOGLE_APPLICATION_CREDENTIALS=C:\Users\eajac\firebase-keys\birdapp-dev-adminsdk.json
 //   set EBIRD_ST_KEY=<your S&T API key>
 //   node scripts/seed-birds.mjs
+//
+// initAdminApp() (below) refuses to run if that key belongs to the prod
+// project — this writes with admin privileges that bypass every rule.
 //
 // On subsequent runs the download phase is skipped if seed-cache.json exists.
 // To force a fresh download: node scripts/seed-birds.mjs --fresh
 
-import { initializeApp } from 'firebase-admin/app';
+import { initAdminApp } from './lib/adminApp.mjs';
 import { getFirestore } from 'firebase-admin/firestore';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -32,7 +34,7 @@ if (!ST_KEY) {
   process.exit(1);
 }
 
-initializeApp();
+initAdminApp();
 const db = getFirestore();
 
 const US_STATES = [

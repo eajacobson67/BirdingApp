@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "birding-app-1a446"
+    "default": "birding-app-1a446",
+    "prod": "birding-app-1a446",
+    "dev": "birdapp-dev-birdleague"
   }
 }

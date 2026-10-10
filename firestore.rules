@@ -41,6 +41,10 @@ service cloud.firestore {
         && request.auth.uid == userId
         && !changed(['isAdmin']);
 
+      // Account deletion. Without this the profile doc survives the auth user
+      // and the app cannot satisfy Play's data-deletion requirement.
+      allow delete: if signedIn() && request.auth.uid == userId;
+
       match /pushTokens/{tokenId} {
         allow read, write: if signedIn() && request.auth.uid == userId;
       }
@@ -122,11 +126,14 @@ service cloud.firestore {
       }
 
       // An append-only scoring log. Editing history would let a player rewrite
-      // their own results after the fact.
+      // their own results after the fact, so update stays shut. Delete is open to
+      // the row's author alone — it can only ever lower their own score, and
+      // account deletion has to be able to remove it.
       match /sightings/{sightingId} {
         allow read: if signedIn();
         allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if signedIn() && resource.data.userId == request.auth.uid;
       }
 
       // Clients only ever read the daily target list.

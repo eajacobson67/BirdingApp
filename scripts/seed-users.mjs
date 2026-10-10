@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 // Seeds 100 fake user profiles into Firestore for leaderboard/nearby testing.
-// Requires GOOGLE_APPLICATION_CREDENTIALS to point to your service account key.
+// Requires GOOGLE_APPLICATION_CREDENTIALS=C:\Users\eajac\firebase-keys\birdapp-dev-adminsdk.json
+// (dev project only — initAdminApp() refuses to run against prod).
 // node scripts/seed-users.mjs
 
-import { initializeApp } from 'firebase-admin/app';
+import { initAdminApp } from './lib/adminApp.mjs';
 import { getFirestore } from 'firebase-admin/firestore';
 import { geohashForLocation } from 'geofire-common';
 
-initializeApp();
+initAdminApp();
 const db = getFirestore();
 
 // 30 users near Madison WI so "nearby" works locally; rest spread across US cities

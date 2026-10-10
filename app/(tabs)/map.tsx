@@ -30,10 +30,18 @@ function BirdPin({ primaryColor, photoUri, count, onPinLoad, onPhotoLoad }: {
   const showPhoto = count === 1 && photoUri;
   return (
     <View style={{ width: 60, height: 68 }}>
+      {/*
+        fadeDuration={0} is load-bearing on Android, not cosmetic. Fresco fades
+        images in over ~300ms, but onLoad fires at decode — before the fade
+        finishes. The marker rasterises on that signal and freezes the photo at
+        whatever alpha the fade had reached, permanently. The result is a pin
+        with a ghost of the bird on it. Android-only prop; a no-op on iOS.
+      */}
       <Image
         source={require('../../assets/buttons/bird_pin.png')}
         style={{ width: 60, height: 60, tintColor: primaryColor }}
         resizeMode="contain"
+        fadeDuration={0}
         onLoad={onPinLoad}
       />
       {showPhoto && (
@@ -41,6 +49,7 @@ function BirdPin({ primaryColor, photoUri, count, onPinLoad, onPhotoLoad }: {
           source={{ uri: photoUri }}
           style={{ position: 'absolute', top: 4, left: 7, width: 48, height: 48, borderRadius: 24 }}
           resizeMode="cover"
+          fadeDuration={0}
           onLoad={onPhotoLoad}
         />
       )}
@@ -75,16 +84,31 @@ function ClusterMarker({ cluster, primaryColor, photoUri, onPress }: {
 }) {
   const [pinLoaded, setPinLoaded] = useState(false);
   const [photoLoaded, setPhotoLoaded] = useState(false);
+  const [frozen, setFrozen] = useState(false);
   const showPhoto = cluster.count === 1 && !!photoUri;
 
   useEffect(() => { setPhotoLoaded(false); }, [photoUri]);
 
   const ready = pinLoaded && (!showPhoto || photoLoaded);
 
+  /**
+   * A paint beat after onLoad, on top of fadeDuration={0} in BirdPin. onLoad
+   * reports decode, not composition, so freezing on it alone can still
+   * snapshot a frame the bitmap has not landed in. Waiting for onLoad remains
+   * required — a blind timer, with no load signal, was the older bug that
+   * froze markers before late images arrived — so this adds to that gate
+   * rather than replacing it.
+   */
+  useEffect(() => {
+    if (!ready) { setFrozen(false); return; }
+    const t = setTimeout(() => setFrozen(true), 250);
+    return () => clearTimeout(t);
+  }, [ready]);
+
   return (
     <Marker
       coordinate={{ latitude: cluster.lat, longitude: cluster.lng }}
-      tracksViewChanges={!ready}
+      tracksViewChanges={!frozen}
       anchor={{ x: 0.5, y: 1 }}
       onPress={onPress}
     >

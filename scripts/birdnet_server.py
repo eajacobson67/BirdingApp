@@ -49,7 +49,23 @@ from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadF
 from fastapi.middleware.cors import CORSMiddleware
 from firebase_admin import auth as fb_auth
 
-firebase_admin.initialize_app(options={"projectId": "birding-app-1a446"})
+# Tokens are accepted from every Firebase project listed here, because the app
+# has separate dev and prod projects (see docs/RELEASE.md) and verify_id_token
+# only accepts tokens whose `aud` matches the app it was initialised with. A
+# single hardcoded project meant dev builds got a bare 401 from every
+# identification call. Override with FIREBASE_PROJECT_IDS=a,b at deploy time.
+FIREBASE_PROJECT_IDS = [
+    p.strip()
+    for p in os.environ.get(
+        "FIREBASE_PROJECT_IDS", "birding-app-1a446,birdapp-dev-birdleague"
+    ).split(",")
+    if p.strip()
+]
+
+_fb_apps = {
+    pid: firebase_admin.initialize_app(name=pid, options={"projectId": pid})
+    for pid in FIREBASE_PROJECT_IDS
+}
 
 app = FastAPI(title="BirdNET Server")
 
@@ -73,10 +89,14 @@ def health():
 async def verify_token(authorization: str = Header(default=None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing Bearer token")
-    try:
-        fb_auth.verify_id_token(authorization[7:])
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    token = authorization[7:]
+    for fb_app in _fb_apps.values():
+        try:
+            fb_auth.verify_id_token(token, app=fb_app)
+            return
+        except Exception:
+            continue
+    raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
 @app.post("/analyze", dependencies=[Depends(verify_token)])

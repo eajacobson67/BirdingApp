@@ -178,3 +178,182 @@ describe('play store release readiness', () => {
     for (const p of perms) expect(allowed.has(p)).toBe(true);
   });
 });
+
+/**
+ * Play submission blockers that are invisible from the running app.
+ *
+ * Each of these was a real reason the first upload would have been rejected or
+ * silently mis-signed. They are asserted here because none of them fail at
+ * runtime — a debug-signed AAB builds fine, and a missing privacy policy only
+ * surfaces in review, days later.
+ */
+describe('play store submission blockers', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const appConfig = require('../../app.config.js').default ?? require('../../app.config.js');
+  const plugins: unknown[] = appConfig.expo.plugins;
+  const pluginNames = plugins.map((p) => (Array.isArray(p) ? p[0] : p));
+
+  test('release builds are signed by the upload keystore plugin', () => {
+    // Without this, android/app/build.gradle keeps the react-native template's
+    // `signingConfig signingConfigs.debug` for release and Play rejects the AAB.
+    expect(pluginNames).toContain('./plugins/withReleaseSigning');
+  });
+
+  test('the manifest cleanup plugin is registered', () => {
+    expect(pluginNames).toContain('./plugins/withManifestCleanup');
+  });
+
+  test('the signing plugin fails the build when credentials are missing', () => {
+    const src = readFileSync(resolve(ROOT, 'plugins/withReleaseSigning.js'), 'utf8');
+    expect(src).toMatch(/throw new GradleException/);
+    expect(src).toMatch(/BIRDAPP_UPLOAD_STORE_FILE/);
+  });
+
+  test('no keystore or signing password is committed to the repo', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { execSync } = require('child_process');
+    const tracked = execSync('git ls-files', { cwd: ROOT, encoding: 'utf8' }).split('\n');
+    const secrets = tracked.filter((f: string) =>
+      /\.(jks|keystore|p12)$/.test(f) && !f.endsWith('debug.keystore'),
+    );
+    expect(secrets).toEqual([]);
+  });
+
+  test('expo-dev-client is not a production dependency', () => {
+    // It merges SYSTEM_ALERT_WINDOW into the manifest, which Play asks a
+    // developer to justify in writing.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pkg = require('../../package.json');
+    expect(pkg.dependencies['expo-dev-client']).toBeUndefined();
+    expect(pkg.devDependencies['expo-dev-client']).toBeDefined();
+  });
+});
+
+describe('data deletion and privacy disclosures', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { PRIVACY_POLICY, DELETION_NOTICE } = require('../../lib/legal');
+
+  test('an in-app privacy policy screen exists and is routed', () => {
+    const layout = readFileSync(resolve(ROOT, 'app/_layout.tsx'), 'utf8');
+    expect(layout).toMatch(/name="legal\/privacy"/);
+  });
+
+  test('an in-app account deletion screen exists and is routed', () => {
+    const layout = readFileSync(resolve(ROOT, 'app/_layout.tsx'), 'utf8');
+    expect(layout).toMatch(/name="settings\/delete-account"/);
+  });
+
+  test('the profile screen links to both', () => {
+    const profile = readFileSync(resolve(ROOT, 'app/(tabs)/profile.tsx'), 'utf8');
+    expect(profile).toMatch(/\/legal\/privacy/);
+    expect(profile).toMatch(/\/settings\/delete-account/);
+  });
+
+  test('the policy names every category of data the app collects', () => {
+    const text = JSON.stringify(PRIVACY_POLICY).toLowerCase();
+    for (const topic of ['location', 'camera', 'microphone', 'photo', 'email', 'notification']) {
+      expect(text).toContain(topic);
+    }
+  });
+
+  test('the policy states that sightings are public by default', () => {
+    expect(JSON.stringify(PRIVACY_POLICY)).toMatch(/public by default/i);
+  });
+
+  /**
+   * Play compares the hosted policy against the app. docs/ is generated from
+   * lib/legal.ts by `npm run legal:html`; if a heading is missing here, the two
+   * have drifted and the hosted copy is stale.
+   */
+  test('the hosted pages are regenerated from lib/legal.ts', () => {
+    const privacy = readFileSync(resolve(ROOT, 'docs/privacy.html'), 'utf8');
+    for (const section of PRIVACY_POLICY) {
+      expect(privacy).toContain(section.heading);
+    }
+    const deletion = readFileSync(resolve(ROOT, 'docs/delete-account.html'), 'utf8');
+    for (const section of DELETION_NOTICE) {
+      expect(deletion).toContain(section.heading);
+    }
+  });
+
+  test('deletion removes every collection the account owns', () => {
+    const account = readFileSync(resolve(ROOT, 'lib/firestore/account.ts'), 'utf8');
+    for (const path of ['sightings', 'friendships', 'leagueMemberships', 'pushTokens', 'users']) {
+      expect(account).toContain(`'${path}'`);
+    }
+    // Uploaded media is not reachable by listAll() under the storage rules, so
+    // it has to be deleted by the URL recorded on each sighting.
+    expect(account).toMatch(/deleteObject/);
+    expect(account).toMatch(/photoURL/);
+    expect(account).toMatch(/audioURL/);
+  });
+});
+
+describe('dev/prod Firebase project separation', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { execSync } = require('child_process');
+
+  function parseEnvFile(path: string): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const line of readFileSync(path, 'utf8').split('\n')) {
+      const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+      if (m) out[m[1]] = m[2].trim();
+    }
+    return out;
+  }
+
+  test('lib/firebase.ts reads its config from env vars, not hardcoded literals', () => {
+    // REGRESSION: this file used to hardcode the prod project's config directly,
+    // which is what made it impossible to point local dev anywhere else.
+    const src = readFileSync(resolve(ROOT, 'lib/firebase.ts'), 'utf8');
+    expect(src).toMatch(/process\.env\.EXPO_PUBLIC_FIREBASE_PROJECT_ID/);
+    expect(src).not.toMatch(/projectId:\s*["']birding-app-1a446["']/);
+    expect(src).not.toMatch(/apiKey:\s*["']AIza/);
+  });
+
+  test('.env.development and .env.production point at different Firebase projects', () => {
+    const dev = parseEnvFile(resolve(ROOT, '.env.development'));
+    const prod = parseEnvFile(resolve(ROOT, '.env.production'));
+    expect(dev.EXPO_PUBLIC_FIREBASE_PROJECT_ID).toBeTruthy();
+    expect(prod.EXPO_PUBLIC_FIREBASE_PROJECT_ID).toBeTruthy();
+    expect(dev.EXPO_PUBLIC_FIREBASE_PROJECT_ID).not.toBe(prod.EXPO_PUBLIC_FIREBASE_PROJECT_ID);
+  });
+
+  test('.firebaserc has explicit dev and prod aliases, and default stays prod', () => {
+    const rc = JSON.parse(readFileSync(resolve(ROOT, '.firebaserc'), 'utf8'));
+    expect(rc.projects.dev).toBeTruthy();
+    expect(rc.projects.prod).toBeTruthy();
+    expect(rc.projects.dev).not.toBe(rc.projects.prod);
+    // A bare `firebase deploy` (no --project flag) must keep hitting the same
+    // project it always has — changing this silently would be a production
+    // rules deploy landing on the wrong project.
+    expect(rc.projects.default).toBe(rc.projects.prod);
+  });
+
+  test('seed scripts refuse to run against the production project', () => {
+    const guard = readFileSync(resolve(ROOT, 'scripts/lib/adminApp.mjs'), 'utf8');
+    expect(guard).toMatch(/birding-app-1a446/);
+    expect(guard).toMatch(/process\.exit\(1\)/);
+
+    // Every script that writes with firebase-admin (full-access, rules bypassed)
+    // must route through the guard rather than calling initializeApp() directly.
+    const seedScripts = [
+      'scripts/seed-birds.mjs',
+      'scripts/seed-users.mjs',
+      'scripts/seed-my-sightings.mjs',
+      'scripts/seed-test.mjs',
+      'scripts/test-seed.mjs',
+    ];
+    for (const script of seedScripts) {
+      const src = readFileSync(resolve(ROOT, script), 'utf8');
+      expect(src).toMatch(/initAdminApp\(\)/);
+      expect(src).not.toMatch(/^\s*initializeApp\(\);/m);
+    }
+  });
+
+  test('no Firebase service account key is committed to the repo', () => {
+    const tracked = execSync('git ls-files', { cwd: ROOT, encoding: 'utf8' }).split('\n');
+    const keys = tracked.filter((f: string) => /adminsdk.*\.json$|serviceAccountKey.*\.json$/i.test(f));
+    expect(keys).toEqual([]);
+  });
+});
