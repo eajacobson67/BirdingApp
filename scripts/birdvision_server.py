@@ -2,21 +2,21 @@
 """
 Bird vision server — proxies to iNaturalist computer vision API.
 
-Token setup (manual, expires every 24 h):
-    1. Log in to iNaturalist, then visit:
-       https://www.inaturalist.org/users/api_token
-       Copy the JWT shown there.
-    2. Update the Cloud Run env var:
-       gcloud run services update birdvision \
-         --set-env-vars INAT_TOKEN=<new-token> --region us-central1
+Token setup (OAuth2 ROPC — the server refreshes its own token):
+    1. Register an app at https://www.inaturalist.org/oauth/applications/new
+    2. Set four env vars on the service:
+       gcloud run services update birdvision --region us-central1 \
+         --set-env-vars INAT_CLIENT_ID=...,INAT_CLIENT_SECRET=...,INAT_USERNAME=...,INAT_PASSWORD=...
 
-TODO: Switch to OAuth2 ROPC once the iNaturalist account is ≥ 2 months old.
-      Register app at https://www.inaturalist.org/oauth/applications/new,
-      then replace INAT_TOKEN with INAT_CLIENT_ID / INAT_CLIENT_SECRET /
-      INAT_USERNAME / INAT_PASSWORD and use the oauth branch in git history.
+The previous setup was a hand-pasted INAT_TOKEN from /users/api_token. That
+JWT expires after 24 h, so photo identification broke a day after every deploy
+and stayed broken — silently, since the failure is a 502 from this proxy with
+no alerting behind it. INAT_TOKEN is still honoured as a fallback when the
+OAuth vars are absent, but it should not be relied on.
 
 Run locally:
-    INAT_TOKEN=xxx python scripts/birdvision_server.py
+    INAT_CLIENT_ID=... INAT_CLIENT_SECRET=... INAT_USERNAME=... INAT_PASSWORD=... \
+      python scripts/birdvision_server.py
 
 Endpoint:
     POST /identify
@@ -28,6 +28,7 @@ Endpoint:
     date:  YYYY-MM-DD (optional)
 """
 
+import asyncio
 import os
 import time
 from collections import defaultdict, deque
@@ -64,6 +65,91 @@ RATE_LIMIT      = 10
 RATE_WINDOW_SEC = 60
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
+# OAuth2 (ROPC). A hand-pasted INAT_TOKEN is a JWT that dies after 24h, so the
+# service was only ever one day from breaking — and did, silently, for 40 days.
+# With these set, the server fetches and caches its own api_token instead.
+INAT_CLIENT_ID     = os.environ.get("INAT_CLIENT_ID", "")
+INAT_CLIENT_SECRET = os.environ.get("INAT_CLIENT_SECRET", "")
+INAT_USERNAME      = os.environ.get("INAT_USERNAME", "")
+INAT_PASSWORD      = os.environ.get("INAT_PASSWORD", "")
+INAT_OAUTH_URL     = "https://www.inaturalist.org/oauth/token"
+INAT_APITOKEN_URL  = "https://www.inaturalist.org/users/api_token"
+
+# iNaturalist's api_token JWT lasts ~24h; refresh well before the edge.
+_TOKEN_TTL_SEC = 20 * 3600
+_token_cache: dict[str, float | str] = {"value": "", "expires_at": 0.0}
+_token_lock = asyncio.Lock()
+
+
+def _oauth_configured() -> bool:
+    return all([INAT_CLIENT_ID, INAT_CLIENT_SECRET, INAT_USERNAME, INAT_PASSWORD])
+
+
+async def get_inat_token() -> str:
+    """
+    Current iNaturalist api_token, refreshed on demand.
+
+    Falls back to a manually set INAT_TOKEN when OAuth is not configured, so
+    this stays backwards compatible with the old deploy.
+    """
+    if not _oauth_configured():
+        if not INAT_TOKEN:
+            raise HTTPException(
+                status_code=503,
+                detail="iNaturalist credentials not configured (set INAT_CLIENT_ID/SECRET/USERNAME/PASSWORD).",
+            )
+        return INAT_TOKEN
+
+    now = time.time()
+    cached = _token_cache
+    if cached["value"] and float(cached["expires_at"]) > now:
+        return str(cached["value"])
+
+    # Single-flight: a burst of requests on a cold container must not trigger
+    # a burst of login attempts, which iNaturalist would rate-limit.
+    async with _token_lock:
+        if _token_cache["value"] and float(_token_cache["expires_at"]) > time.time():
+            return str(_token_cache["value"])
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            oauth_resp = await client.post(
+                INAT_OAUTH_URL,
+                data={
+                    "client_id": INAT_CLIENT_ID,
+                    "client_secret": INAT_CLIENT_SECRET,
+                    "grant_type": "password",
+                    "username": INAT_USERNAME,
+                    "password": INAT_PASSWORD,
+                },
+            )
+            if not oauth_resp.is_success:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"iNaturalist OAuth failed ({oauth_resp.status_code})",
+                )
+            access_token = oauth_resp.json().get("access_token", "")
+
+            # The OAuth access_token is not accepted by the vision API; it has
+            # to be exchanged for a short-lived api_token JWT.
+            api_resp = await client.get(
+                INAT_APITOKEN_URL,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if not api_resp.is_success:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"iNaturalist api_token fetch failed ({api_resp.status_code})",
+                )
+            jwt = api_resp.json().get("api_token", "")
+
+        if not jwt:
+            raise HTTPException(status_code=502, detail="iNaturalist returned no api_token")
+
+        _token_cache["value"] = jwt
+        _token_cache["expires_at"] = time.time() + _TOKEN_TTL_SEC
+        return jwt
+
+
 app = FastAPI(title="Bird Vision Server")
 
 app.add_middleware(
@@ -88,7 +174,7 @@ def check_rate_limit(uid: str) -> None:
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "inat_token_set": bool(INAT_TOKEN)}
+    return {"status": "ok", "inat_auth": "oauth" if _oauth_configured() else ("static-token" if INAT_TOKEN else "unconfigured")}
 
 
 async def verify_token(authorization: str = Header(default=None)) -> str:
@@ -113,8 +199,7 @@ async def identify(
 ):
     check_rate_limit(uid)
 
-    if not INAT_TOKEN:
-        raise HTTPException(status_code=503, detail="INAT_TOKEN env var not set.")
+    inat_token = await get_inat_token()
 
     img_bytes = await file.read()
     if len(img_bytes) > MAX_IMAGE_BYTES:
@@ -132,7 +217,7 @@ async def identify(
             INAT_ENDPOINT,
             files={"image": ("photo.jpg", img_bytes, file.content_type or "image/jpeg")},
             data=params,
-            headers={"Authorization": f"Bearer {INAT_TOKEN}"},
+            headers={"Authorization": f"Bearer {inat_token}"},
         )
 
     if not resp.is_success:
